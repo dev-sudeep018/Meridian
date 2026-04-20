@@ -40,7 +40,7 @@ export default function ConversationPanel({ messages, phase, discovery, onSendMe
           >
             {msg.role === 'assistant' && (
               <div className="conversation-avatar">
-                <span className="conversation-avatar-text">M</span>
+                <span className="material-icons" style={{fontSize: '16px', color: '#000'}}>hub</span>
               </div>
             )}
             <div className={`conversation-bubble conversation-bubble-${msg.role}`}>
@@ -61,7 +61,7 @@ export default function ConversationPanel({ messages, phase, discovery, onSendMe
           <div className="conversation-complete animate-fade-in-up">
             <div className="conversation-msg conversation-msg-assistant">
               <div className="conversation-avatar">
-                <span className="conversation-avatar-text">M</span>
+                <span className="material-icons" style={{fontSize: '16px', color: '#000'}}>hub</span>
               </div>
               <div className="conversation-bubble conversation-bubble-assistant">
                 Discovery complete. {discovery.innovationName && (

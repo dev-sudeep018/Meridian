@@ -18,9 +18,7 @@ export default function DiscoveryBoard({ discovery, phase }) {
       {phase === 'q1' || phase === 'q2' || phase === 'q3' ? (
         <div className="discovery-board-empty">
           <div className="discovery-board-empty-icon">
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-              <path d="M12 52V12L32 36L52 12V52" stroke="rgba(78,205,196,0.15)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <span className="material-icons" style={{fontSize: '64px', color: 'rgba(78,205,196,0.15)'}}>hub</span>
           </div>
           <p className="discovery-board-empty-text">
             Answer the questions on the left to begin your discovery.

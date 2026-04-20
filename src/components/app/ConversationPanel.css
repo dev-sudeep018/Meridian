@@ -200,13 +200,25 @@
 .conversation-input {
   flex: 1;
   padding: 12px 4px;
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
   color: #f5f5f5;
   font-size: 15px;
   font-family: 'Inter', sans-serif;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
   line-height: 1.4;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.conversation-input:focus {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .conversation-input::placeholder {
