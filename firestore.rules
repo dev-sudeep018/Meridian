@@ -1,11 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Discoveries are readable by anyone (shareable links)
-    // Writable only by Cloud Functions (admin SDK bypasses rules)
+    // Discoveries — readable by anyone (shareable links)
+    // Writable by authenticated users (client-side pipeline)
     match /discoveries/{discoveryId} {
       allow read: if true;
-      allow write: if false;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // User profiles — only the authenticated user can read/write their own
