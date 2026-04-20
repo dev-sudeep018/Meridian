@@ -1,8 +1,30 @@
 /**
  * Client-side AI API wrappers.
- * Calls Gemini, Groq, and Tavily directly from the browser.
- * Keys are read from localStorage (set in Settings panel).
+ * Calls Gemini and Groq directly from the browser with retry logic.
  */
+
+const MAX_RETRIES = 2
+const RETRY_DELAY = 3000
+
+async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, options)
+      if (res.status === 429 || res.status === 503) {
+        // Rate limited — wait and retry
+        const delay = RETRY_DELAY * (i + 1)
+        console.warn(`Rate limited (${res.status}), retrying in ${delay}ms...`)
+        await new Promise(r => setTimeout(r, delay))
+        continue
+      }
+      return res
+    } catch (err) {
+      if (i === retries) throw err
+      console.warn(`Fetch failed, retry ${i + 1}/${retries}:`, err.message)
+      await new Promise(r => setTimeout(r, RETRY_DELAY))
+    }
+  }
+}
 
 export async function callGemini(prompt, options = {}) {
   const {
@@ -23,9 +45,9 @@ export async function callGemini(prompt, options = {}) {
     },
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -38,11 +60,22 @@ export async function callGemini(prompt, options = {}) {
 
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Gemini returned no content')
+  if (!text) {
+    console.warn('Gemini response:', JSON.stringify(data).substring(0, 300))
+    throw new Error('Gemini returned no content')
+  }
 
   if (jsonMode) {
     try { return JSON.parse(text) }
-    catch { return JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()) }
+    catch {
+      // Try cleaning markdown code fences
+      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      try { return JSON.parse(cleaned) }
+      catch (e2) {
+        console.error('Failed to parse Gemini JSON:', text.substring(0, 500))
+        throw new Error('Gemini returned invalid JSON')
+      }
+    }
   }
   return text
 }
@@ -65,7 +98,7 @@ export async function callGroq(prompt, options = {}) {
     ...(jsonMode && { response_format: { type: 'json_object' } }),
   }
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -80,11 +113,23 @@ export async function callGroq(prompt, options = {}) {
   }
 
   const data = await res.json()
-  const text = data.choices[0].message.content
+  const text = data.choices?.[0]?.message?.content
+
+  if (!text) {
+    console.warn('Groq response:', JSON.stringify(data).substring(0, 300))
+    throw new Error('Groq returned no content')
+  }
 
   if (jsonMode) {
     try { return JSON.parse(text) }
-    catch { return JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()) }
+    catch {
+      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      try { return JSON.parse(cleaned) }
+      catch (e2) {
+        console.error('Failed to parse Groq JSON:', text.substring(0, 500))
+        throw new Error('Groq returned invalid JSON')
+      }
+    }
   }
   return text
 }
