@@ -1,11 +1,10 @@
 /**
- * Client-side Pipeline Orchestrator v3
- * Minimizes Gemini usage — only 2 Gemini calls total.
- * Everything else uses Groq (30 RPM free tier, much more generous).
+ * Client-side Pipeline Orchestrator v4
+ * 100% Groq-powered — zero Gemini calls. No rate limit issues.
  */
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import { callGemini, callGroq } from './ai'
+import { callGroq } from './ai'
 import {
   searchStackOverflow, searchGithubIssues, searchHackerNews,
   searchArxiv, searchHuggingFace, searchOpenAlex, searchSemanticScholar, searchTavily,
@@ -26,13 +25,13 @@ async function update(discoveryId, data) {
     const ref = doc(db, 'discoveries', discoveryId)
     await updateDoc(ref, { ...data, updatedAt: serverTimestamp() })
   } catch (err) {
-    console.warn('[Firestore] Update failed (ad blocker?):', err.message)
+    console.warn('[Firestore] Update failed:', err.message)
   }
 }
 
-// ——— AGENT 0: Prompt Sharpener (Groq — fast) ———
+// ——— AGENT 0: Prompt Sharpener ———
 async function agent0(answers) {
-  return await callGroq(`Convert these user answers into a research brief. Only clarify and structure — do not add opinions.
+  return await callGroq(`Convert these user answers into a research brief. Only clarify and structure.
 
 Q1 (Problem): ${answers.q1}
 Q2 (Prior attempts): ${answers.q2}
@@ -48,7 +47,7 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.2 })
 }
 
-// ——— AGENT 1: Frustration Scanner (Groq) ———
+// ——— AGENT 1: Frustration Scanner ———
 async function agent1(brief) {
   const q = brief.problemStatement.substring(0, 100)
   const [so, gh, hn] = await Promise.all([
@@ -57,7 +56,7 @@ async function agent1(brief) {
     searchHackerNews(q, { tags: 'story' }).catch(() => []),
   ])
 
-  return await callGroq(`Find the most painful developer frustration matching this brief from real search data. Do NOT invent problems.
+  return await callGroq(`Find the most painful developer frustration matching this brief. Use REAL data only.
 
 BRIEF: ${JSON.stringify(brief)}
 STACK OVERFLOW: ${JSON.stringify(so.slice(0, 3))}
@@ -78,7 +77,7 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.2 })
 }
 
-// ——— AGENT 2: Frontier Detector (Groq) ———
+// ——— AGENT 2: Frontier Detector ———
 async function agent2(brief) {
   const q = brief.problemStatement.substring(0, 80)
   const [arxiv, hf] = await Promise.all([
@@ -104,7 +103,7 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.3 })
 }
 
-// ——— AGENT 3: Adjacent Domain Finder (Groq) ———
+// ——— AGENT 3: Adjacent Domain Finder ———
 async function agent3(brief, frustration) {
   const abstraction = await callGroq(
     `Express this software problem as a pure structural problem with NO technology words.
@@ -141,7 +140,7 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.4, maxTokens: 3000 })
 }
 
-// ——— AGENT 4: Adversarial Critic (Groq) ———
+// ——— AGENT 4: Adversarial Critic ———
 async function agent4(candidates, brief) {
   return await callGroq(`You are the Adversarial Critic. Test each candidate bridge.
 
@@ -161,7 +160,7 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.2, maxTokens: 3000 })
 }
 
-// ——— AGENT 4.5: Reality Checker (Groq) ———
+// ——— AGENT 4.5: Reality Checker ———
 async function agent45(bridge, frustration) {
   const [so, gh] = await Promise.all([
     searchStackOverflow(frustration.problemTitle, { pageSize: 3 }).catch(() => []),
@@ -184,32 +183,32 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.2, maxTokens: 2000 })
 }
 
-// ——— AGENT 5: Code Translator (Gemini — needs large output) ———
+// ——— AGENT 5: Code Translator ———
 async function agent5(bridge, brief, frustration) {
-  return await callGemini(`Generate a technical spec and working Python file (<200 lines).
+  return await callGroq(`Generate a technical spec and complete working Python file (<200 lines).
 
 BRIDGE: ${JSON.stringify(bridge)}
 BRIEF: ${JSON.stringify(brief)}
 FRUSTRATION: ${JSON.stringify(frustration)}
 
-RULES: single file, stdlib + pydantic only, type hints, docstrings, 3 test_* functions, if __name__ == "__main__" block. NO placeholders.
+RULES: single file, stdlib + pydantic only, type hints, docstrings, 3 test_* functions, if __name__ == "__main__" block. NO placeholders or stubs.
 
 Respond with JSON only:
 {
   "specification": {
-    "libraryName": "kebab-case",
-    "oneLiner": "One sentence",
-    "coreAlgorithm": "Paragraph",
-    "apiSurface": [{ "method": "", "params": "", "returns": "" }],
-    "primaryUseCase": "",
-    "limitations": "",
-    "invalidation": ""
+    "libraryName": "kebab-case-name",
+    "oneLiner": "One sentence description",
+    "coreAlgorithm": "Paragraph explaining the algorithm",
+    "apiSurface": [{ "method": "Class.method()", "params": "param descriptions", "returns": "return type" }],
+    "primaryUseCase": "Who uses this and why",
+    "limitations": "Known limitations",
+    "invalidation": "What would make this obsolete"
   },
-  "pythonCode": "complete Python file as string"
-}`, { jsonMode: true, temperature: 0.2, maxOutputTokens: 8192 })
+  "pythonCode": "complete Python file as a single string"
+}`, { jsonMode: true, temperature: 0.2, maxTokens: 4096 })
 }
 
-// ——— AGENT 6: Code Verifier (Groq) ———
+// ——— AGENT 6: Code Verifier ———
 async function agent6(codeResult) {
   return await callGroq(`Verify this Python code. Check SYNTAX, LOGIC, TESTS, DEPENDENCIES (only stdlib + pydantic).
 
@@ -234,7 +233,7 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.1, maxTokens: 4096 })
 }
 
-// ——— AGENT 7: Market Gap (Groq) ———
+// ——— AGENT 7: Market Gap ———
 async function agent7(specification, bridge) {
   const q = `${specification.libraryName} ${specification.primaryUseCase}`.substring(0, 100)
   const competitors = await searchTavily(q, { maxResults: 3 }).catch(() => ({ results: [] }))
@@ -253,11 +252,11 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.3 })
 }
 
-// ——— AGENT 8: Publisher (Gemini — creative writing) ———
+// ——— AGENT 8: Publisher ———
 async function agent8(discoveryData) {
   const { specification, approvedBridge, frustrationData, marketGap } = discoveryData
 
-  return await callGemini(`Write launch content. Technical and honest.
+  return await callGroq(`Write launch content for this innovation. Technical and honest, no hype words.
 
 INNOVATION: ${specification.libraryName} — ${specification.oneLiner}
 BRIDGE: From ${approvedBridge.field}: ${approvedBridge.mechanism}
@@ -267,43 +266,43 @@ MARKET GAP: ${marketGap}
 Respond with JSON only:
 {
   "hnPost": "Show HN post (3-4 paragraphs)",
-  "productHuntPost": "PH description with tagline",
+  "productHuntPost": "Product Hunt description with tagline",
   "outreachMessages": [{ "username": "", "publicComplaint": "", "personalizedMessage": "", "profileUrl": "" }]
-}`, { jsonMode: true, temperature: 0.5, maxOutputTokens: 4096 })
+}`, { jsonMode: true, temperature: 0.5, maxTokens: 3000 })
 }
 
 // ——— MAIN ORCHESTRATOR ———
 export async function runPipeline(discoveryId, answers) {
   try {
-    console.log('[MERIDIAN] Pipeline starting...')
+    console.log('[MERIDIAN] Pipeline starting (100% Groq)...')
 
-    // === PHASE 1: Agent 0 (Groq) ===
+    // === PHASE 1: Agent 0 ===
     console.log('[Agent 0] Prompt Sharpener...')
     const brief = await agent0(answers)
     await update(discoveryId, { originalBrief: brief })
     console.log('[Agent 0] Done:', brief.problemStatement?.substring(0, 60))
 
-    await wait(800)
+    await wait(600)
 
-    // === PHASE 2: Agents 1 + 2 in parallel (both Groq) ===
-    console.log('[Agent 1+2] Frustration Scanner + Frontier Detector...')
+    // === PHASE 2: Agents 1 + 2 parallel ===
+    console.log('[Agent 1+2] Frustration + Frontier...')
     const [a1, a2] = await Promise.all([agent1(brief), agent2(brief)])
     await update(discoveryId, { agent1: a1 })
     await update(discoveryId, { agent2: a2 })
     console.log('[Agent 1] Done:', a1.problemTitle)
     console.log('[Agent 2] Done:', a2.capabilityName)
 
-    await wait(1000)
+    await wait(800)
 
-    // === PHASE 3: Agent 3 (Groq) ===
+    // === PHASE 3: Agent 3 ===
     console.log('[Agent 3] Adjacent Domain Finder...')
     const a3 = await agent3(brief, a1)
     await update(discoveryId, { agent3: a3 })
     console.log('[Agent 3] Done:', a3.candidates?.length, 'candidates')
 
-    await wait(1000)
+    await wait(800)
 
-    // === PHASE 4: Agent 4 (Groq) ===
+    // === PHASE 4: Agent 4 ===
     console.log('[Agent 4] Adversarial Critic...')
     const criticResult = await agent4(a3.candidates, brief)
     if (!criticResult.approvedBridge) {
@@ -323,26 +322,26 @@ export async function runPipeline(discoveryId, answers) {
     })
     console.log('[Agent 4] Approved:', criticResult.approvedBridge.field)
 
-    await wait(1000)
+    await wait(800)
 
-    // === PHASE 5: Agent 4.5 (Groq) ===
+    // === PHASE 5: Agent 4.5 ===
     console.log('[Agent 4.5] Reality Checker...')
     const reality = await agent45(criticResult.approvedBridge, a1)
     await update(discoveryId, { agent45: reality })
     console.log('[Agent 4.5] Done:', reality.validationStrength)
 
-    await wait(1000)
+    await wait(800)
 
-    // === PHASE 6: Agent 5 (Gemini — FIRST Gemini call) ===
-    console.log('[Agent 5] Code Translator (Gemini)...')
+    // === PHASE 6: Agent 5 ===
+    console.log('[Agent 5] Code Translator...')
     const code = await agent5(criticResult.approvedBridge, brief, a1)
     await update(discoveryId, { agent5: code })
     console.log('[Agent 5] Done:', code.specification?.libraryName)
 
-    await wait(1500)
+    await wait(800)
 
-    // === PHASE 7: Agent 6 + 7 parallel (Groq + Groq) ===
-    console.log('[Agent 6+7] Code Verifier + Market Gap...')
+    // === PHASE 7: Agents 6 + 7 parallel ===
+    console.log('[Agent 6+7] Verifier + Market Gap...')
     const [verifier, market] = await Promise.all([
       agent6(code),
       agent7(code.specification, criticResult.approvedBridge),
@@ -352,10 +351,10 @@ export async function runPipeline(discoveryId, answers) {
     console.log('[Agent 6] Verdict:', verifier.verdict)
     console.log('[Agent 7] Gap:', market.marketGap?.substring(0, 60))
 
-    await wait(4000) // Wait before second Gemini call
+    await wait(800)
 
-    // === PHASE 8: Agent 8 (Gemini — SECOND Gemini call) ===
-    console.log('[Agent 8] Publisher (Gemini)...')
+    // === PHASE 8: Agent 8 ===
+    console.log('[Agent 8] Publisher...')
     const pub = await agent8({
       specification: code.specification,
       verifiedCode: verifier.verifiedCode || code.pythonCode,
@@ -378,7 +377,7 @@ export async function runPipeline(discoveryId, answers) {
     try {
       await update(discoveryId, { status: 'error', error: err.message })
     } catch (e2) {
-      console.error('[MERIDIAN] Could not write error to Firestore:', e2.message)
+      console.error('[MERIDIAN] Could not write error:', e2.message)
     }
   }
 }
