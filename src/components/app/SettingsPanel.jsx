@@ -1,28 +1,93 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, LogOut, Trash2, Download, Shield, Bell, Palette, Key, ChevronRight, ExternalLink, Check } from 'lucide-react'
+import { X, LogOut, Trash2, Download, Shield, Bell, Key, ChevronRight, ExternalLink, Check, Eye, EyeOff } from 'lucide-react'
 import './SettingsPanel.css'
 
 const THEMES = [
-  { id: 'dark', name: 'Dark', bg: '#0a0a0a', accent: '#4ECDC4' },
-  { id: 'midnight', name: 'Midnight', bg: '#0d1117', accent: '#58a6ff' },
-  { id: 'ocean', name: 'Ocean', bg: '#0a192f', accent: '#64ffda' },
-  { id: 'obsidian', name: 'Obsidian', bg: '#1a1a2e', accent: '#e94560' },
+  { id: 'dark', name: 'Dark', bg: '#0a0a0a', accent: '#4ECDC4', secondary: '#111' },
+  { id: 'midnight', name: 'Midnight', bg: '#0d1117', accent: '#58a6ff', secondary: '#161b22' },
+  { id: 'ocean', name: 'Ocean', bg: '#0a192f', accent: '#64ffda', secondary: '#112240' },
+  { id: 'obsidian', name: 'Obsidian', bg: '#1a1a2e', accent: '#e94560', secondary: '#16213e' },
 ]
+
+function applyTheme(theme) {
+  const root = document.documentElement
+  root.style.setProperty('--theme-bg', theme.bg)
+  root.style.setProperty('--theme-accent', theme.accent)
+  root.style.setProperty('--theme-secondary', theme.secondary)
+
+  // Apply to key elements
+  document.body.style.background = theme.bg
+  document.querySelectorAll('.app-page').forEach(el => el.style.background = theme.bg)
+  document.querySelectorAll('.app-header').forEach(el => {
+    el.style.background = theme.secondary
+    el.style.borderBottomColor = `${theme.accent}15`
+  })
+  document.querySelectorAll('.discovery-board').forEach(el => el.style.background = theme.bg)
+  document.querySelectorAll('.conversation-panel').forEach(el => el.style.background = theme.bg)
+  document.querySelectorAll('.conversation-bubble-assistant').forEach(el => {
+    el.style.background = `${theme.accent}10`
+    el.style.borderColor = `${theme.accent}15`
+  })
+  document.querySelectorAll('.conversation-avatar').forEach(el => {
+    el.style.background = theme.accent
+  })
+  document.querySelectorAll('.conversation-send-btn:not(:disabled)').forEach(el => {
+    el.style.background = `linear-gradient(135deg, ${theme.accent}, ${theme.accent}cc)`
+  })
+
+  localStorage.setItem('meridian-theme', theme.id)
+}
 
 export default function SettingsPanel({ user, onClose, onSignOut }) {
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState(true)
-  const [activeTheme, setActiveTheme] = useState('dark')
+  const [activeTheme, setActiveTheme] = useState(localStorage.getItem('meridian-theme') || 'dark')
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+
+  // API key state
+  const [apiKeys, setApiKeys] = useState({
+    gemini: localStorage.getItem('meridian-gemini-key') || '',
+    groq: localStorage.getItem('meridian-groq-key') || '',
+    tavily: localStorage.getItem('meridian-tavily-key') || '',
+  })
+  const [showKeys, setShowKeys] = useState({ gemini: false, groq: false, tavily: false })
+  const [savedFeedback, setSavedFeedback] = useState('')
+
+  const handleThemeChange = (theme) => {
+    setActiveTheme(theme.id)
+    applyTheme(theme)
+  }
+
+  // Apply saved theme on mount
+  useEffect(() => {
+    const savedTheme = THEMES.find(t => t.id === activeTheme)
+    if (savedTheme && savedTheme.id !== 'dark') {
+      applyTheme(savedTheme)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     try {
+      // Navigate first to avoid ProtectedRoute redirecting to /login
+      onClose()
       await onSignOut()
-      navigate('/')
+      navigate('/', { replace: true })
     } catch (e) {
       console.error('Sign out failed:', e)
     }
+  }
+
+  const handleApiKeyChange = (key, value) => {
+    setApiKeys(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleSaveKeys = () => {
+    localStorage.setItem('meridian-gemini-key', apiKeys.gemini)
+    localStorage.setItem('meridian-groq-key', apiKeys.groq)
+    localStorage.setItem('meridian-tavily-key', apiKeys.tavily)
+    setSavedFeedback('Saved')
+    setTimeout(() => setSavedFeedback(''), 2000)
   }
 
   const handleDeleteData = () => {
@@ -85,7 +150,7 @@ export default function SettingsPanel({ user, onClose, onSignOut }) {
                 <button
                   key={theme.id}
                   className={`settings-theme-option ${activeTheme === theme.id ? 'settings-theme-active' : ''}`}
-                  onClick={() => setActiveTheme(theme.id)}
+                  onClick={() => handleThemeChange(theme)}
                 >
                   <div className="settings-theme-preview" style={{ background: theme.bg }}>
                     <div className="settings-theme-accent" style={{ background: theme.accent }}></div>
@@ -102,7 +167,6 @@ export default function SettingsPanel({ user, onClose, onSignOut }) {
           {/* Preferences */}
           <section className="settings-section">
             <h3 className="settings-section-title">Preferences</h3>
-
             <div className="settings-item">
               <div className="settings-item-left">
                 <Bell size={16} className="settings-item-icon" />
@@ -121,32 +185,41 @@ export default function SettingsPanel({ user, onClose, onSignOut }) {
           <section className="settings-section">
             <h3 className="settings-section-title">API Configuration</h3>
 
-            <div className="settings-item">
-              <div className="settings-item-left">
-                <Key size={16} className="settings-item-icon" />
-                <span>Gemini API Key</span>
+            {[
+              { key: 'gemini', label: 'Gemini API Key', placeholder: 'AIza...' },
+              { key: 'groq', label: 'Groq API Key', placeholder: 'gsk_...' },
+              { key: 'tavily', label: 'Tavily API Key', placeholder: 'tvly-...' },
+            ].map(({ key, label, placeholder }) => (
+              <div className="settings-api-row" key={key}>
+                <div className="settings-api-label">
+                  <Key size={14} className="settings-item-icon" />
+                  <span>{label}</span>
+                </div>
+                <div className="settings-api-input-wrap">
+                  <input
+                    type={showKeys[key] ? 'text' : 'password'}
+                    className="settings-api-input"
+                    placeholder={placeholder}
+                    value={apiKeys[key]}
+                    onChange={e => handleApiKeyChange(key, e.target.value)}
+                  />
+                  <button
+                    className="settings-api-eye"
+                    onClick={() => setShowKeys(prev => ({ ...prev, [key]: !prev[key] }))}
+                    type="button"
+                  >
+                    {showKeys[key] ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
               </div>
-              <span className="settings-item-badge">Required</span>
-            </div>
+            ))}
 
-            <div className="settings-item">
-              <div className="settings-item-left">
-                <Key size={16} className="settings-item-icon" />
-                <span>Groq API Key</span>
-              </div>
-              <span className="settings-item-badge">Required</span>
-            </div>
-
-            <div className="settings-item">
-              <div className="settings-item-left">
-                <Key size={16} className="settings-item-icon" />
-                <span>Tavily API Key</span>
-              </div>
-              <span className="settings-item-badge">Required</span>
-            </div>
+            <button className="settings-save-keys" onClick={handleSaveKeys}>
+              {savedFeedback || 'Save Keys'}
+            </button>
 
             <p className="settings-hint">
-              3 keys power the pipeline: Gemini and Groq for AI reasoning, Tavily for web search. Semantic Scholar is free.
+              Keys are stored locally in your browser, never sent to our servers.
             </p>
           </section>
 

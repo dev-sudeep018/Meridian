@@ -16,7 +16,7 @@ export default function LandingPage() {
           <a className="hover:text-primary transition-colors" href="#overseer">Overseer</a>
           <a className="hover:text-primary transition-colors" href="#footer">Launch</a>
         </div>
-        <Link to="/app" className="bg-primary hover:bg-teal-400 text-black px-6 py-2 rounded-full font-bold uppercase text-xs tracking-wider transition-all shadow-lg shadow-teal-500/30">
+        <Link to="/login" className="bg-primary hover:bg-teal-400 text-black px-6 py-2 rounded-full font-bold uppercase text-xs tracking-wider transition-all shadow-lg shadow-teal-500/30">
           Launch App
         </Link>
       </nav>
@@ -729,7 +729,7 @@ export default function LandingPage() {
             10 autonomous agents. 8 real-time APIs. Cross-domain structural bridges. Verified working code. All in under 5 minutes, completely free.
           </p>
           <div className="flex flex-col md:flex-row justify-center items-center gap-6">
-            <Link to="/app" className="bg-primary hover:bg-teal-400 text-black px-10 py-4 rounded-full font-bold uppercase text-sm tracking-widest transition-all shadow-lg shadow-teal-900/50 w-full md:w-auto text-center">
+            <Link to="/login" className="bg-primary hover:bg-teal-400 text-black px-10 py-4 rounded-full font-bold uppercase text-sm tracking-widest transition-all shadow-lg shadow-teal-900/50 w-full md:w-auto text-center">
               Start Pipeline Now
             </Link>
             <a href="#agents" className="bg-transparent border border-gray-600 hover:border-white text-white px-10 py-4 rounded-full font-bold uppercase text-sm tracking-widest transition-all w-full md:w-auto text-center">
