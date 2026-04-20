@@ -1,28 +1,27 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, googleProvider, db } from '../config/firebase'
+import { auth, googleProvider } from '../config/firebase'
 
 export function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser)
-        // Create/update user document on sign-in
-        try {
-          await setDoc(doc(db, 'users', firebaseUser.uid), {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            lastActiveAt: serverTimestamp(),
-          }, { merge: true })
-        } catch (e) {
-          console.warn('Could not update user profile:', e)
-        }
+        // Fire-and-forget: update user profile in Firestore (don't block auth)
+        import('firebase/firestore').then(({ doc, setDoc, serverTimestamp }) => {
+          import('../config/firebase').then(({ db }) => {
+            setDoc(doc(db, 'users', firebaseUser.uid), {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              lastActiveAt: serverTimestamp(),
+            }, { merge: true }).catch(e => console.warn('Could not update user profile:', e))
+          })
+        }).catch(() => {})
       } else {
         setUser(null)
       }
