@@ -44,8 +44,8 @@
 
 .agent-status-info {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
@@ -61,11 +61,23 @@
 
 .agent-status-state {
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   flex-shrink: 0;
-  margin-left: var(--space-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-status-summary {
+  text-transform: none;
+  font-weight: 400;
+  color: rgba(78, 205, 196, 0.5);
+}
+
+.agent-status-running .agent-status-state {
+  text-transform: none;
+  font-style: italic;
 }
 
 /* Waiting state */
