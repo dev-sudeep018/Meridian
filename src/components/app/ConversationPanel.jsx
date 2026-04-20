@@ -106,25 +106,35 @@ export default function ConversationPanel({ messages, phase, discovery, onSendMe
 
       {/* Input Area — only during conversation phase */}
       {isConversationPhase && (
-        <form className="conversation-input-area" onSubmit={handleSubmit}>
-          <input
-            ref={inputRef}
-            type="text"
-            className="conversation-input"
-            placeholder="Type your response..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            id="conversation-input"
-          />
-          <button
-            type="submit"
-            className="conversation-send-btn"
-            disabled={!input.trim()}
-            id="send-button"
-          >
-            <Send size={18} />
-          </button>
-        </form>
+        <div className="conversation-input-wrapper">
+          <form className="conversation-input-area" onSubmit={handleSubmit}>
+            <div className={`conversation-input-container ${input.trim() ? 'has-text' : ''}`}>
+              <span className="conversation-input-icon material-icons">chat_bubble_outline</span>
+              <input
+                ref={inputRef}
+                type="text"
+                className="conversation-input"
+                placeholder="Describe your challenge..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                id="conversation-input"
+              />
+              <button
+                type="submit"
+                className="conversation-send-btn"
+                disabled={!input.trim()}
+                id="send-button"
+              >
+                <Send size={16} />
+                <span className="send-btn-text">Send</span>
+              </button>
+            </div>
+            <p className="conversation-input-hint">
+              <span className="material-icons" style={{fontSize: '12px', verticalAlign: 'middle', marginRight: '4px'}}>lock</span>
+              Your input is private and never stored beyond this session
+            </p>
+          </form>
+        </div>
       )}
     </div>
   )
