@@ -1,7 +1,29 @@
+@import "tailwindcss";
+
 /* ============================================================
    MERIDIAN — Global Design System
    Dark, cinematic, professional aesthetic
    ============================================================ */
+
+/* === GLOBAL RESETS === */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Remove browser default focus outlines — we use our own focus styles */
+input:focus,
+textarea:focus,
+button:focus,
+select:focus,
+a:focus,
+[tabindex]:focus {
+  outline: none;
+}
+
+/* Prevent blue/dark highlight on tap (mobile) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* === CSS CUSTOM PROPERTIES === */
 :root {
