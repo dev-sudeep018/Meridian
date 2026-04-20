@@ -271,18 +271,75 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.5, maxTokens: 3000 })
 }
 
+// ——— OVERSEER: Quality Intelligence (runs after each phase) ———
+async function overseer(discoveryId, agentName, agentOutput) {
+  try {
+    const scores = await callGroq(`You are the Overseer for MERIDIAN, a quality intelligence system evaluating each agent's output.
+
+AGENT: ${agentName}
+OUTPUT: ${JSON.stringify(agentOutput).substring(0, 1500)}
+
+Score this output (1-10 each):
+1. TRAJECTORY: Is the pipeline heading toward a genuinely useful innovation?
+2. CREDIBILITY: Is this output backed by real data, not fabricated?
+3. NOVELTY: Is the emerging innovation genuinely new, not obvious?
+
+Also decide: should the pipeline STOP? Only if fundamentally flawed (bridge is purely metaphorical, code is obviously wrong, innovation already exists as-is).
+
+Respond with JSON only:
+{ "trajectory": 0, "credibility": 0, "novelty": 0, "stop": false, "reasoning": "1-2 sentences" }`, { jsonMode: true, temperature: 0.1 })
+
+    await update(discoveryId, {
+      currentScores: {
+        trajectory: scores.trajectory,
+        credibility: scores.credibility,
+        novelty: scores.novelty,
+      },
+      [`overseerLog`]: await getOverseerLog(discoveryId, {
+        triggeredBy: agentName,
+        trajectory: scores.trajectory,
+        credibility: scores.credibility,
+        novelty: scores.novelty,
+        stop: scores.stop,
+        reasoning: scores.reasoning,
+        timestamp: new Date().toISOString(),
+      }),
+    })
+
+    console.log(`[Overseer] ${agentName}: T=${scores.trajectory} C=${scores.credibility} N=${scores.novelty}${scores.stop ? ' STOP!' : ''}`)
+    return scores
+  } catch (err) {
+    console.warn('[Overseer] Skipped:', err.message)
+    return null
+  }
+}
+
+// Helper to append to overseer log array
+async function getOverseerLog(discoveryId, newEntry) {
+  try {
+    const { getDoc } = await import('firebase/firestore')
+    const ref = doc(db, 'discoveries', discoveryId)
+    const snap = await getDoc(ref)
+    const existing = snap.data()?.overseerLog || []
+    return [...existing, newEntry]
+  } catch {
+    return [newEntry]
+  }
+}
+
 // ——— MAIN ORCHESTRATOR ———
 export async function runPipeline(discoveryId, answers) {
   try {
-    console.log('[MERIDIAN] Pipeline starting (100% Groq)...')
+    console.log('[MERIDIAN] Pipeline starting (100% Groq + Overseer)...')
 
     // === PHASE 1: Agent 0 ===
     console.log('[Agent 0] Prompt Sharpener...')
     const brief = await agent0(answers)
     await update(discoveryId, { originalBrief: brief })
     console.log('[Agent 0] Done:', brief.problemStatement?.substring(0, 60))
+    overseer(discoveryId, 'Prompt Sharpener', brief) // fire-and-forget
 
-    await wait(600)
+    await wait(800)
 
     // === PHASE 2: Agents 1 + 2 parallel ===
     console.log('[Agent 1+2] Frustration + Frontier...')
@@ -291,16 +348,18 @@ export async function runPipeline(discoveryId, answers) {
     await update(discoveryId, { agent2: a2 })
     console.log('[Agent 1] Done:', a1.problemTitle)
     console.log('[Agent 2] Done:', a2.capabilityName)
+    overseer(discoveryId, 'Frustration Scanner', a1)
 
-    await wait(800)
+    await wait(1000)
 
     // === PHASE 3: Agent 3 ===
     console.log('[Agent 3] Adjacent Domain Finder...')
     const a3 = await agent3(brief, a1)
     await update(discoveryId, { agent3: a3 })
     console.log('[Agent 3] Done:', a3.candidates?.length, 'candidates')
+    overseer(discoveryId, 'Adjacent Domain Finder', a3)
 
-    await wait(800)
+    await wait(1000)
 
     // === PHASE 4: Agent 4 ===
     console.log('[Agent 4] Adversarial Critic...')
@@ -321,24 +380,32 @@ export async function runPipeline(discoveryId, answers) {
       adjacentDomain: criticResult.approvedBridge.field,
     })
     console.log('[Agent 4] Approved:', criticResult.approvedBridge.field)
+    const criticScores = await overseer(discoveryId, 'Adversarial Critic', criticResult) // await this one — check for STOP
+    if (criticScores?.stop) {
+      console.warn('[Overseer] STOP signal after Critic:', criticScores.reasoning)
+      await update(discoveryId, { status: 'stopped', stopReason: criticScores.reasoning })
+      return
+    }
 
-    await wait(800)
+    await wait(1000)
 
     // === PHASE 5: Agent 4.5 ===
     console.log('[Agent 4.5] Reality Checker...')
     const reality = await agent45(criticResult.approvedBridge, a1)
     await update(discoveryId, { agent45: reality })
     console.log('[Agent 4.5] Done:', reality.validationStrength)
+    overseer(discoveryId, 'Reality Checker', reality)
 
-    await wait(800)
+    await wait(1000)
 
     // === PHASE 6: Agent 5 ===
     console.log('[Agent 5] Code Translator...')
     const code = await agent5(criticResult.approvedBridge, brief, a1)
     await update(discoveryId, { agent5: code })
     console.log('[Agent 5] Done:', code.specification?.libraryName)
+    overseer(discoveryId, 'Code Translator', { spec: code.specification })
 
-    await wait(800)
+    await wait(1000)
 
     // === PHASE 7: Agents 6 + 7 parallel ===
     console.log('[Agent 6+7] Verifier + Market Gap...')
@@ -350,8 +417,9 @@ export async function runPipeline(discoveryId, answers) {
     await update(discoveryId, { agent7: market })
     console.log('[Agent 6] Verdict:', verifier.verdict)
     console.log('[Agent 7] Gap:', market.marketGap?.substring(0, 60))
+    overseer(discoveryId, 'Code Verifier', verifier)
 
-    await wait(800)
+    await wait(1000)
 
     // === PHASE 8: Agent 8 ===
     console.log('[Agent 8] Publisher...')
@@ -363,10 +431,21 @@ export async function runPipeline(discoveryId, answers) {
       validationEntries: reality.validationEntries,
       marketGap: market.marketGap,
     })
+
+    // Final Overseer evaluation
+    const finalScores = await overseer(discoveryId, 'Publisher (Final)', {
+      innovation: code.specification?.libraryName,
+      bridge: criticResult.approvedBridge.field,
+      validation: reality.validationStrength,
+      verdict: verifier.verdict,
+    })
+
     await update(discoveryId, {
       agent8: { githubUrl: null, pdfGenerated: false },
       launchPack: pub,
-      currentScores: { trajectory: 8, credibility: 7, novelty: 8 },
+      currentScores: finalScores
+        ? { trajectory: finalScores.trajectory, credibility: finalScores.credibility, novelty: finalScores.novelty }
+        : { trajectory: 8, credibility: 7, novelty: 8 },
       status: 'complete',
     })
 
@@ -381,3 +460,4 @@ export async function runPipeline(discoveryId, answers) {
     }
   }
 }
+
