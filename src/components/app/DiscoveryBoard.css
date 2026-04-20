@@ -1,8 +1,24 @@
+/* ========== Discovery Board — Veynx-matched ========== */
+
 .discovery-board {
   width: var(--panel-right-width);
   height: 100%;
   overflow-y: auto;
-  background: var(--color-bg-primary);
+  background: #0a0a0a;
+}
+
+/* Scrollbar */
+.discovery-board::-webkit-scrollbar {
+  width: 4px;
+}
+
+.discovery-board::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.discovery-board::-webkit-scrollbar-thumb {
+  background: rgba(78, 205, 196, 0.15);
+  border-radius: 4px;
 }
 
 .discovery-board-empty {
@@ -16,18 +32,22 @@
 }
 
 .discovery-board-empty-icon {
-  opacity: 0.5;
+  opacity: 0.3;
+  color: #4ECDC4;
 }
 
 .discovery-board-empty-text {
-  font-size: var(--font-size-lg);
-  color: var(--color-text-secondary);
+  font-size: 18px;
+  font-family: 'Anton', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.4);
   text-align: center;
 }
 
 .discovery-board-empty-sub {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.2);
   text-align: center;
 }
 
@@ -44,18 +64,19 @@
   justify-content: center;
   gap: var(--space-2xl);
   padding: var(--space-lg) var(--space-xl);
-  background: rgba(39, 174, 96, 0.06);
-  border: 1px solid rgba(39, 174, 96, 0.15);
-  border-radius: var(--radius-lg);
+  background: rgba(78, 205, 196, 0.04);
+  border: 1px solid rgba(78, 205, 196, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
 }
 
 .discovery-summary-item {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  color: #e0e0e0;
 }
 
 @media (max-width: 768px) {

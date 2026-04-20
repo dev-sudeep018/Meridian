@@ -1,30 +1,33 @@
+/* ========== Agent Status Feed — Veynx-matched ========== */
+
 .agent-status-feed {
   padding: var(--space-md) 0;
 }
 
 .agent-status-header {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.25);
   margin-bottom: var(--space-md);
+  font-family: 'Inter', sans-serif;
 }
 
 .agent-status-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 2px;
 }
 
 .agent-status-item {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: 8px var(--space-md);
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-  animation: fadeIn var(--transition-slow) ease forwards;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  animation: fadeIn 0.4s ease forwards;
 }
 
 .agent-status-item:hover {
@@ -36,7 +39,7 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  transition: background var(--transition-base);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .agent-status-info {
@@ -48,38 +51,76 @@
 }
 
 .agent-status-name {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  color: #e0e0e0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .agent-status-state {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  text-transform: capitalize;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   flex-shrink: 0;
   margin-left: var(--space-sm);
 }
 
+/* Waiting state */
 .agent-status-waiting .agent-status-name {
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.agent-status-waiting .agent-status-dot {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .agent-status-waiting .agent-status-state {
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* Running state */
+.agent-status-running .agent-status-dot {
+  background: #4ECDC4;
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.5);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 .agent-status-running .agent-status-state {
-  color: var(--color-status-running);
+  color: #4ECDC4;
+}
+
+.agent-status-running .agent-status-name {
+  color: #f5f5f5;
+}
+
+/* Complete state */
+.agent-status-complete .agent-status-dot {
+  background: #4ECDC4;
 }
 
 .agent-status-complete .agent-status-state {
-  color: var(--color-status-complete);
+  color: rgba(78, 205, 196, 0.6);
+}
+
+/* Error state */
+.agent-status-error .agent-status-dot {
+  background: #EF4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 .agent-status-error .agent-status-state {
-  color: var(--color-status-error);
+  color: #EF4444;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
 }

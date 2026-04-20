@@ -1,9 +1,13 @@
+/* ========== App Page — Veynx-matched Dark Theme ========== */
+
 .app-page {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-primary);
+  background: #0a0a0a;
   overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  color: #f5f5f5;
 }
 
 .app-content {

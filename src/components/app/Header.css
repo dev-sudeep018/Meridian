@@ -1,3 +1,5 @@
+/* ========== App Header — Veynx-matched ========== */
+
 .app-header {
   position: fixed;
   top: 0;
@@ -9,10 +11,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-xl);
-  background: rgba(13, 17, 23, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: var(--border-subtle);
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(78, 205, 196, 0.08);
 }
 
 .app-header-left {
@@ -33,16 +35,22 @@
 }
 
 .app-header-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--color-bg-tertiary);
+  background: rgba(78, 205, 196, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-secondary);
-  border: var(--border-subtle);
+  color: #4ECDC4;
+  border: 1px solid rgba(78, 205, 196, 0.2);
+  transition: all 0.3s ease;
+}
+
+.app-header-avatar:hover {
+  border-color: rgba(78, 205, 196, 0.5);
+  box-shadow: 0 0 12px rgba(78, 205, 196, 0.15);
 }
 
 .app-header-avatar-img {

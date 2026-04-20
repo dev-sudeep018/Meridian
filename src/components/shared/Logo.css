@@ -1,3 +1,5 @@
+/* ========== Logo — Veynx-matched ========== */
+
 .logo-link {
   text-decoration: none;
   color: inherit;
@@ -6,24 +8,29 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 8px;
 }
 
 .logo-icon {
   flex-shrink: 0;
+  color: #4ECDC4;
 }
 
 .logo-text {
-  font-weight: var(--font-weight-bold);
-  letter-spacing: 0.12em;
-  color: var(--color-text-primary);
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #f5f5f5;
   white-space: nowrap;
 }
 
 .logo[data-size="sm"] .logo-text {
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
+  font-size: 14px;
 }
 
 .logo[data-size="lg"] .logo-text {
-  letter-spacing: 0.15em;
+  letter-spacing: 0.2em;
+  font-size: 24px;
 }

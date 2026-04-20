@@ -1,3 +1,5 @@
+/* ========== Overseer Bar — Veynx-matched ========== */
+
 .overseer-bar {
   display: flex;
   gap: var(--space-xl);
@@ -12,17 +14,18 @@
 }
 
 .overseer-bar-track {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-full);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 99px;
   overflow: hidden;
 }
 
 .overseer-bar-fill {
   height: 100%;
-  border-radius: var(--radius-full);
+  border-radius: 99px;
   animation: barFill 800ms ease forwards;
-  transition: width var(--transition-slow), background var(--transition-base);
+  transition: width 0.6s ease, background 0.3s ease;
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
 }
 
 .overseer-bar-meta {
@@ -32,17 +35,19 @@
 }
 
 .overseer-bar-label {
-  font-size: 10px;
-  font-weight: var(--font-weight-medium);
+  font-size: 9px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'Inter', sans-serif;
 }
 
 .overseer-bar-score {
   font-size: 11px;
-  font-weight: var(--font-weight-bold);
-  font-family: var(--font-mono);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #4ECDC4;
 }
 
 @media (max-width: 768px) {

@@ -1,22 +1,25 @@
+/* ========== Code Card — Veynx-matched ========== */
+
 .code-card-name {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-card-green);
-  margin-bottom: var(--space-xs);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #4ECDC4;
+  margin-bottom: 4px;
 }
 
 .code-card-oneliner {
-  font-size: var(--font-size-base);
-  color: var(--color-text-secondary);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
   margin-bottom: var(--space-lg);
 }
 
 .code-card-block {
   margin-bottom: var(--space-lg);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(78, 205, 196, 0.08);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .code-card-meta {
@@ -30,17 +33,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-md);
-  background: var(--color-bg-primary);
-  border-radius: var(--radius-sm);
-  border: var(--border-subtle);
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(78, 205, 196, 0.08);
 }
 
 .code-card-install-cmd {
   flex: 1;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
