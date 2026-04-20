@@ -143,6 +143,12 @@
 .settings-profile-email {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.3);
+  margin: 0 0 2px;
+}
+
+.settings-profile-joined {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.15);
   margin: 0;
 }
 
@@ -244,6 +250,70 @@
   left: 20px;
   background: #4ECDC4;
   box-shadow: 0 0 8px rgba(78, 205, 196, 0.4);
+}
+
+/* Theme Grid */
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.settings-theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.settings-theme-preview {
+  width: 100%;
+  aspect-ratio: 1.4;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-theme-option:hover .settings-theme-preview {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.settings-theme-active .settings-theme-preview {
+  border-color: rgba(78, 205, 196, 0.5);
+  box-shadow: 0 0 12px rgba(78, 205, 196, 0.15);
+}
+
+.settings-theme-accent {
+  width: 60%;
+  height: 3px;
+  border-radius: 2px;
+  position: absolute;
+  bottom: 8px;
+  left: 20%;
+}
+
+.settings-theme-check {
+  position: relative;
+  z-index: 1;
+}
+
+.settings-theme-name {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 500;
+}
+
+.settings-theme-active .settings-theme-name {
+  color: #4ECDC4;
 }
 
 /* Hint */

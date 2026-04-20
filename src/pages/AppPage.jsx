@@ -28,6 +28,18 @@ export default function AppPage() {
 
   const { discovery } = useDiscovery(discoveryId)
 
+  const handleNewDiscovery = useCallback(() => {
+    setDiscoveryId(null)
+    setPhase('q1')
+    setAnswers({ q1: '', q2: '', q3: '' })
+    setMessages([
+      {
+        role: 'assistant',
+        text: 'I discover innovations by finding solutions from fields that have never spoken to yours. To find something real, I need to understand your specific situation. What problem keeps you up at night — describe it as specifically as you can, including who experiences it and what the current workaround is.',
+      },
+    ])
+  }, [])
+
   const handleSendMessage = useCallback(async (text) => {
     if (!text.trim()) return
 
@@ -107,6 +119,7 @@ export default function AppPage() {
         discovery={discovery}
         onToggleHistory={() => setHistoryOpen(!historyOpen)}
         onToggleSettings={() => setSettingsOpen(!settingsOpen)}
+        onNewDiscovery={handleNewDiscovery}
         user={user}
       />
 
