@@ -287,22 +287,31 @@ Respond with JSON only:
 }
 
 // ——— OVERSEER: Quality Intelligence (runs after each phase) ———
+// Returns scores object and throws if pipeline should stop
 async function overseer(discoveryId, agentName, agentOutput) {
   try {
-    const scores = await callGroq(`You are the Overseer for MERIDIAN, a quality intelligence system evaluating each agent's output.
+    const scores = await callGroq(`You are the Overseer for MERIDIAN, a strict quality intelligence system.
 
 AGENT: ${agentName}
 OUTPUT: ${JSON.stringify(agentOutput).substring(0, 1500)}
 
-Score this output (1-10 each):
-1. TRAJECTORY: Is the pipeline heading toward a genuinely useful innovation?
-2. CREDIBILITY: Is this output backed by real data, not fabricated?
-3. NOVELTY: Is the emerging innovation genuinely new, not obvious?
+Score this output HONESTLY (1-10 each). Be critical — do NOT give everything high scores:
+1. TRAJECTORY: Is this heading toward a genuinely useful, specific innovation? (Low if vague/generic)
+2. CREDIBILITY: Is this backed by real data, not fabricated? (Low if references look fake)
+3. NOVELTY: Is the emerging innovation genuinely new? (Low if it already exists)
 
-Also decide: should the pipeline STOP? Only if fundamentally flawed (bridge is purely metaphorical, code is obviously wrong, innovation already exists as-is).
+Set "stop" to true if:
+- Any score is 3 or below
+- The bridge is purely metaphorical with no structural parallel
+- The innovation clearly already exists
+- The data appears fabricated
 
 Respond with JSON only:
 { "trajectory": 0, "credibility": 0, "novelty": 0, "stop": false, "reasoning": "1-2 sentences" }`, { jsonMode: true, temperature: 0.1 })
+
+    // Enforce quality gates
+    const avg = (scores.trajectory + scores.credibility + scores.novelty) / 3
+    const shouldStop = scores.stop || scores.trajectory <= 3 || scores.credibility <= 3 || scores.novelty <= 3 || avg < 4
 
     await update(discoveryId, {
       currentScores: {
@@ -310,22 +319,40 @@ Respond with JSON only:
         credibility: scores.credibility,
         novelty: scores.novelty,
       },
-      [`overseerLog`]: await getOverseerLog(discoveryId, {
+      overseerLog: await getOverseerLog(discoveryId, {
         triggeredBy: agentName,
         trajectory: scores.trajectory,
         credibility: scores.credibility,
         novelty: scores.novelty,
-        stop: scores.stop,
+        stop: shouldStop,
         reasoning: scores.reasoning,
         timestamp: new Date().toISOString(),
       }),
     })
 
-    console.log(`[Overseer] ${agentName}: T=${scores.trajectory} C=${scores.credibility} N=${scores.novelty}${scores.stop ? ' STOP!' : ''}`)
+    console.log(`[Overseer] ${agentName}: T=${scores.trajectory} C=${scores.credibility} N=${scores.novelty} avg=${avg.toFixed(1)}${shouldStop ? ' STOPPING!' : ''}`)
+
+    if (shouldStop) {
+      const reason = scores.reasoning || `Quality too low after ${agentName} (T:${scores.trajectory} C:${scores.credibility} N:${scores.novelty})`
+      await update(discoveryId, {
+        status: 'failed',
+        failureReason: `Overseer halted: ${reason}`,
+      })
+      throw new OverseerStopError(reason)
+    }
+
     return scores
   } catch (err) {
+    if (err instanceof OverseerStopError) throw err
     console.warn('[Overseer] Skipped:', err.message)
     return null
+  }
+}
+
+class OverseerStopError extends Error {
+  constructor(reason) {
+    super(`Overseer STOP: ${reason}`)
+    this.name = 'OverseerStopError'
   }
 }
 
@@ -345,14 +372,14 @@ async function getOverseerLog(discoveryId, newEntry) {
 // ——— MAIN ORCHESTRATOR ———
 export async function runPipeline(discoveryId, answers) {
   try {
-    console.log('[MERIDIAN] Pipeline starting (100% Groq + Overseer)...')
+    console.log('[MERIDIAN] Pipeline starting (100% Groq + Overseer enforcement)...')
 
     // === PHASE 1: Agent 0 ===
     console.log('[Agent 0] Prompt Sharpener...')
     const brief = await agent0(answers)
     await update(discoveryId, { originalBrief: brief })
     console.log('[Agent 0] Done:', brief.problemStatement?.substring(0, 60))
-    overseer(discoveryId, 'Prompt Sharpener', brief) // fire-and-forget
+    await overseer(discoveryId, 'Prompt Sharpener', brief)
 
     await wait(800)
 
@@ -363,7 +390,7 @@ export async function runPipeline(discoveryId, answers) {
     await update(discoveryId, { agent2: a2 })
     console.log('[Agent 1] Done:', a1.problemTitle)
     console.log('[Agent 2] Done:', a2.capabilityName)
-    overseer(discoveryId, 'Frustration Scanner', a1)
+    await overseer(discoveryId, 'Frustration Scanner + Frontier Detector', { frustration: a1, frontier: a2 })
 
     await wait(1000)
 
@@ -372,7 +399,7 @@ export async function runPipeline(discoveryId, answers) {
     const a3 = await agent3(brief, a1)
     await update(discoveryId, { agent3: a3 })
     console.log('[Agent 3] Done:', a3.candidates?.length, 'candidates')
-    overseer(discoveryId, 'Adjacent Domain Finder', a3)
+    await overseer(discoveryId, 'Adjacent Domain Finder', a3)
 
     await wait(1000)
 
@@ -395,12 +422,7 @@ export async function runPipeline(discoveryId, answers) {
       adjacentDomain: criticResult.approvedBridge.field,
     })
     console.log('[Agent 4] Approved:', criticResult.approvedBridge.field)
-    const criticScores = await overseer(discoveryId, 'Adversarial Critic', criticResult) // await this one — check for STOP
-    if (criticScores?.stop) {
-      console.warn('[Overseer] STOP signal after Critic:', criticScores.reasoning)
-      await update(discoveryId, { status: 'stopped', stopReason: criticScores.reasoning })
-      return
-    }
+    await overseer(discoveryId, 'Adversarial Critic', criticResult)
 
     await wait(1000)
 
@@ -409,7 +431,7 @@ export async function runPipeline(discoveryId, answers) {
     const reality = await agent45(criticResult.approvedBridge, a1)
     await update(discoveryId, { agent45: reality })
     console.log('[Agent 4.5] Done:', reality.validationStrength)
-    overseer(discoveryId, 'Reality Checker', reality)
+    await overseer(discoveryId, 'Reality Checker', reality)
 
     await wait(1000)
 
@@ -418,7 +440,7 @@ export async function runPipeline(discoveryId, answers) {
     const code = await agent5(criticResult.approvedBridge, brief, a1)
     await update(discoveryId, { agent5: code })
     console.log('[Agent 5] Done:', code.specification?.libraryName)
-    overseer(discoveryId, 'Code Translator', { spec: code.specification })
+    await overseer(discoveryId, 'Code Translator', { spec: code.specification })
 
     await wait(1000)
 
@@ -432,7 +454,7 @@ export async function runPipeline(discoveryId, answers) {
     await update(discoveryId, { agent7: market })
     console.log('[Agent 6] Verdict:', verifier.verdict)
     console.log('[Agent 7] Gap:', market.marketGap?.substring(0, 60))
-    overseer(discoveryId, 'Code Verifier', verifier)
+    await overseer(discoveryId, 'Code Verifier + Market Gap', { verdict: verifier.verdict, marketGap: market.marketGap })
 
     await wait(1000)
 
@@ -440,10 +462,8 @@ export async function runPipeline(discoveryId, answers) {
     console.log('[Agent 8] Publisher...')
     const pub = await agent8({
       specification: code.specification,
-      verifiedCode: verifier.verifiedCode || code.pythonCode,
       approvedBridge: criticResult.approvedBridge,
       frustrationData: a1,
-      validationEntries: reality.validationEntries,
       marketGap: market.marketGap,
     })
 
@@ -455,18 +475,47 @@ export async function runPipeline(discoveryId, answers) {
       verdict: verifier.verdict,
     })
 
+    // === Generate PDF ===
+    console.log('[PDF] Generating discovery report...')
+    let pdfUrl = null
+    try {
+      const { generateDiscoveryPDF } = await import('./pdf.js')
+      pdfUrl = await generateDiscoveryPDF({
+        brief,
+        frustration: a1,
+        frontier: a2,
+        bridge: criticResult.approvedBridge,
+        rejectedBridges: criticResult.rejectedBridges,
+        reality,
+        specification: code.specification,
+        pythonCode: code.pythonCode,
+        verifier,
+        market,
+        launchPack: pub,
+        scores: finalScores || { trajectory: 7, credibility: 6, novelty: 7 },
+      })
+      console.log('[PDF] Generated')
+    } catch (pdfErr) {
+      console.warn('[PDF] Generation failed:', pdfErr.message)
+    }
+
     await update(discoveryId, {
-      agent8: { githubUrl: null, pdfGenerated: false },
+      agent8: { githubUrl: null, pdfGenerated: !!pdfUrl },
       launchPack: pub,
+      pdfUrl,
       currentScores: finalScores
         ? { trajectory: finalScores.trajectory, credibility: finalScores.credibility, novelty: finalScores.novelty }
-        : { trajectory: 8, credibility: 7, novelty: 8 },
+        : { trajectory: 7, credibility: 6, novelty: 7 },
       status: 'complete',
     })
 
     console.log('[MERIDIAN] Pipeline complete!')
 
   } catch (err) {
+    if (err.name === 'OverseerStopError') {
+      console.warn('[MERIDIAN] Pipeline stopped by Overseer:', err.message)
+      return // Status already written by overseer function
+    }
     console.error('[MERIDIAN] Pipeline error:', err)
     try {
       await update(discoveryId, { status: 'error', error: err.message })
@@ -475,4 +524,5 @@ export async function runPipeline(discoveryId, answers) {
     }
   }
 }
+
 
