@@ -372,36 +372,43 @@ async function getOverseerLog(discoveryId, newEntry) {
 // ——— MAIN ORCHESTRATOR ———
 export async function runPipeline(discoveryId, answers) {
   try {
-    console.log('[MERIDIAN] Pipeline starting (100% Groq + Overseer enforcement)...')
+    console.log('[MERIDIAN] Pipeline starting...')
 
     // === PHASE 1: Agent 0 ===
     console.log('[Agent 0] Prompt Sharpener...')
     const brief = await agent0(answers)
     await update(discoveryId, { originalBrief: brief })
     console.log('[Agent 0] Done:', brief.problemStatement?.substring(0, 60))
-    await overseer(discoveryId, 'Prompt Sharpener', brief)
 
-    await wait(800)
+    await wait(3000)
 
-    // === PHASE 2: Agents 1 + 2 parallel ===
-    console.log('[Agent 1+2] Frustration + Frontier...')
-    const [a1, a2] = await Promise.all([agent1(brief), agent2(brief)])
+    // === PHASE 2: Agents 1 + 2 (sequential to avoid rate limits) ===
+    console.log('[Agent 1] Frustration Scanner...')
+    const a1 = await agent1(brief)
     await update(discoveryId, { agent1: a1 })
-    await update(discoveryId, { agent2: a2 })
     console.log('[Agent 1] Done:', a1.problemTitle)
-    console.log('[Agent 2] Done:', a2.capabilityName)
-    await overseer(discoveryId, 'Frustration Scanner + Frontier Detector', { frustration: a1, frontier: a2 })
 
-    await wait(1000)
+    await wait(3000)
+
+    console.log('[Agent 2] Frontier Detector...')
+    const a2 = await agent2(brief)
+    await update(discoveryId, { agent2: a2 })
+    console.log('[Agent 2] Done:', a2.capabilityName)
+
+    await wait(3000)
+
+    // === OVERSEER CHECKPOINT 1: Research quality ===
+    await overseer(discoveryId, 'Research Phase (Agents 0-2)', { brief, frustration: a1, frontier: a2 })
+
+    await wait(3000)
 
     // === PHASE 3: Agent 3 ===
     console.log('[Agent 3] Adjacent Domain Finder...')
     const a3 = await agent3(brief, a1)
     await update(discoveryId, { agent3: a3 })
     console.log('[Agent 3] Done:', a3.candidates?.length, 'candidates')
-    await overseer(discoveryId, 'Adjacent Domain Finder', a3)
 
-    await wait(1000)
+    await wait(3000)
 
     // === PHASE 4: Agent 4 ===
     console.log('[Agent 4] Adversarial Critic...')
@@ -422,41 +429,44 @@ export async function runPipeline(discoveryId, answers) {
       adjacentDomain: criticResult.approvedBridge.field,
     })
     console.log('[Agent 4] Approved:', criticResult.approvedBridge.field)
-    await overseer(discoveryId, 'Adversarial Critic', criticResult)
 
-    await wait(1000)
+    await wait(3000)
+
+    // === OVERSEER CHECKPOINT 2: Bridge quality (critical gate) ===
+    await overseer(discoveryId, 'Bridge Phase (Agents 3-4)', { bridge: criticResult.approvedBridge, candidates: a3.candidates?.length })
+
+    await wait(3000)
 
     // === PHASE 5: Agent 4.5 ===
     console.log('[Agent 4.5] Reality Checker...')
     const reality = await agent45(criticResult.approvedBridge, a1)
     await update(discoveryId, { agent45: reality })
     console.log('[Agent 4.5] Done:', reality.validationStrength)
-    await overseer(discoveryId, 'Reality Checker', reality)
 
-    await wait(1000)
+    await wait(3000)
 
-    // === PHASE 6: Agent 5 ===
+    // === PHASE 6: Agent 5 (2 calls internally) ===
     console.log('[Agent 5] Code Translator...')
     const code = await agent5(criticResult.approvedBridge, brief, a1)
     await update(discoveryId, { agent5: code })
     console.log('[Agent 5] Done:', code.specification?.libraryName)
-    await overseer(discoveryId, 'Code Translator', { spec: code.specification })
 
-    await wait(1000)
+    await wait(4000)
 
-    // === PHASE 7: Agents 6 + 7 parallel ===
-    console.log('[Agent 6+7] Verifier + Market Gap...')
-    const [verifier, market] = await Promise.all([
-      agent6(code),
-      agent7(code.specification, criticResult.approvedBridge),
-    ])
+    // === PHASE 7: Agent 6 then Agent 7 (sequential) ===
+    console.log('[Agent 6] Code Verifier...')
+    const verifier = await agent6(code)
     await update(discoveryId, { agent6: verifier, innovationName: code.specification?.libraryName || 'discovery' })
-    await update(discoveryId, { agent7: market })
     console.log('[Agent 6] Verdict:', verifier.verdict)
-    console.log('[Agent 7] Gap:', market.marketGap?.substring(0, 60))
-    await overseer(discoveryId, 'Code Verifier + Market Gap', { verdict: verifier.verdict, marketGap: market.marketGap })
 
-    await wait(1000)
+    await wait(3000)
+
+    console.log('[Agent 7] Market Gap Analyst...')
+    const market = await agent7(code.specification, criticResult.approvedBridge)
+    await update(discoveryId, { agent7: market })
+    console.log('[Agent 7] Gap:', market.marketGap?.substring(0, 60))
+
+    await wait(3000)
 
     // === PHASE 8: Agent 8 ===
     console.log('[Agent 8] Publisher...')
@@ -467,12 +477,15 @@ export async function runPipeline(discoveryId, answers) {
       marketGap: market.marketGap,
     })
 
-    // Final Overseer evaluation
-    const finalScores = await overseer(discoveryId, 'Publisher (Final)', {
+    await wait(3000)
+
+    // === OVERSEER CHECKPOINT 3: Final evaluation ===
+    const finalScores = await overseer(discoveryId, 'Final Pipeline Review', {
       innovation: code.specification?.libraryName,
       bridge: criticResult.approvedBridge.field,
       validation: reality.validationStrength,
       verdict: verifier.verdict,
+      marketGap: market.marketGap?.substring(0, 100),
     })
 
     // === Generate PDF ===
@@ -514,7 +527,7 @@ export async function runPipeline(discoveryId, answers) {
   } catch (err) {
     if (err.name === 'OverseerStopError') {
       console.warn('[MERIDIAN] Pipeline stopped by Overseer:', err.message)
-      return // Status already written by overseer function
+      return
     }
     console.error('[MERIDIAN] Pipeline error:', err)
     try {
@@ -524,5 +537,6 @@ export async function runPipeline(discoveryId, answers) {
     }
   }
 }
+
 
 
