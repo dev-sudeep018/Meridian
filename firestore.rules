@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Discoveries are readable by anyone (shareable links)
+    // Writable only by Cloud Functions (admin SDK bypasses rules)
+    match /discoveries/{discoveryId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // User profiles — only the authenticated user can read/write their own
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,47 @@
+.code-card-name {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-card-green);
+  margin-bottom: var(--space-xs);
+}
+
+.code-card-oneliner {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.code-card-block {
+  margin-bottom: var(--space-lg);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.code-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.code-card-install {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-sm);
+  border: var(--border-subtle);
+}
+
+.code-card-install-cmd {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

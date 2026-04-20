@@ -1,0 +1,117 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.01em;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.btn:hover::after {
+  opacity: 1;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn:disabled::after {
+  display: none;
+}
+
+/* Sizes */
+.btn-sm {
+  padding: 6px 14px;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.btn-md {
+  padding: 10px 22px;
+  font-size: var(--font-size-base);
+}
+
+.btn-lg {
+  padding: 14px 32px;
+  font-size: var(--font-size-lg);
+  border-radius: var(--radius-lg);
+}
+
+.btn-xl {
+  padding: 18px 40px;
+  font-size: var(--font-size-xl);
+  border-radius: var(--radius-lg);
+}
+
+/* Variants */
+.btn-primary {
+  background: var(--color-accent-teal);
+  color: var(--color-text-inverse);
+  box-shadow: 0 4px 16px rgba(78, 205, 196, 0.3);
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-teal-hover);
+  box-shadow: 0 6px 24px rgba(78, 205, 196, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-accent-teal);
+  border: 1px solid var(--color-accent-teal);
+}
+
+.btn-secondary:hover {
+  background: rgba(78, 205, 196, 0.1);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn-ghost:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-danger {
+  background: var(--color-card-red);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c0392b;
+}
+
+/* Icon */
+.btn-icon {
+  display: flex;
+  align-items: center;
+}
+
+.btn-icon svg {
+  width: 1em;
+  height: 1em;
+}

@@ -1,0 +1,356 @@
+/* ============================================================
+   MERIDIAN — Global Design System
+   Dark, cinematic, professional aesthetic
+   ============================================================ */
+
+/* === CSS CUSTOM PROPERTIES === */
+:root {
+  /* Colors — Background */
+  --color-bg-primary: #0D1117;
+  --color-bg-secondary: #161B22;
+  --color-bg-tertiary: #1C2333;
+  --color-bg-overlay: rgba(13, 17, 23, 0.85);
+  --color-bg-input: #0D1117;
+
+  /* Colors — Text */
+  --color-text-primary: #E6EDF3;
+  --color-text-white: #FFFFFF;
+  --color-text-secondary: #8B949E;
+  --color-text-muted: #484F58;
+  --color-text-inverse: #0D1117;
+
+  /* Colors — Accent */
+  --color-accent-teal: #4ECDC4;
+  --color-accent-teal-hover: #3DBDB4;
+  --color-accent-teal-glow: rgba(78, 205, 196, 0.25);
+  --color-accent-purple: #6C63FF;
+  --color-accent-purple-glow: rgba(108, 99, 255, 0.2);
+
+  /* Colors — Cards */
+  --color-card-red: #E74C3C;
+  --color-card-orange: #F39C12;
+  --color-card-teal: #4ECDC4;
+  --color-card-purple: #6C63FF;
+  --color-card-green: #27AE60;
+  --color-card-navy: #1C2333;
+
+  /* Colors — Scores */
+  --color-score-green: #27AE60;
+  --color-score-orange: #F39C12;
+  --color-score-red: #E74C3C;
+
+  /* Colors — Agent Status */
+  --color-status-waiting: #484F58;
+  --color-status-running: #4ECDC4;
+  --color-status-complete: #27AE60;
+  --color-status-error: #E74C3C;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+  --font-size-3xl: 3rem;
+  --font-size-4xl: 4rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.7;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+  --space-4xl: 6rem;
+
+  /* Border & Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.06);
+  --border-light: 1px solid rgba(255, 255, 255, 0.1);
+  --border-accent: 1px solid var(--color-accent-teal);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.4);
+  --shadow-glow-teal: 0 0 30px var(--color-accent-teal-glow);
+  --shadow-glow-purple: 0 0 20px var(--color-accent-purple-glow);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout */
+  --header-height: 56px;
+  --panel-left-width: 35%;
+  --panel-right-width: 65%;
+  --history-panel-width: 420px;
+  --max-content-width: 1200px;
+}
+
+/* === CSS RESET === */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--color-accent-teal);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-accent-teal-hover);
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: var(--font-family);
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+}
+
+input,
+textarea {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  width: 100%;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--color-accent-teal);
+}
+
+ul, ol {
+  list-style: none;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* === SELECTION === */
+::selection {
+  background: var(--color-accent-teal);
+  color: var(--color-text-inverse);
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--color-accent-teal-glow);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--color-accent-teal-glow), 0 0 60px rgba(78, 205, 196, 0.1);
+  }
+}
+
+@keyframes barFill {
+  from { width: 0%; }
+  to { width: var(--bar-width); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* === UTILITY CLASSES === */
+.animate-fade-in {
+  animation: fadeIn var(--transition-slow) ease forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp var(--transition-slow) ease forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight var(--transition-slow) ease forwards;
+}
+
+.animate-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-accent-teal), var(--color-accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* === STAGGER DELAYS FOR CARD ANIMATIONS === */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 200ms; }
+.stagger-4 { animation-delay: 300ms; }
+.stagger-5 { animation-delay: 400ms; }
+.stagger-6 { animation-delay: 500ms; }

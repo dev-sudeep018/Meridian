@@ -1,0 +1,29 @@
+.logo-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.logo-icon {
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.12em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.logo[data-size="sm"] .logo-text {
+  letter-spacing: 0.1em;
+}
+
+.logo[data-size="lg"] .logo-text {
+  letter-spacing: 0.15em;
+}

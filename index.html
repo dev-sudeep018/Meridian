@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MERIDIAN — Autonomous Innovation Discovery</title>
+    <meta name="description" content="MERIDIAN discovers innovations by finding structural bridges between unrelated fields, validates them against real developer pain, and builds working code." />
+    <meta name="theme-color" content="#0a0a0a" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#4ECDC4",
+              "background-light": "#ffffff",
+              "background-dark": "#0a0a0a",
+              "stripe-teal": "rgba(78, 205, 196, 0.15)",
+              "stripe-dark": "rgba(0, 0, 0, 0.8)",
+            },
+            fontFamily: {
+              display: ['Anton', 'sans-serif'],
+              body: ['Inter', 'sans-serif'],
+            },
+            backgroundImage: {
+              'scanlines': 'linear-gradient(90deg, rgba(10,10,10,1) 50%, rgba(78, 205, 196, 0.2) 50%)',
+              'scanlines-light': 'linear-gradient(90deg, rgba(255,255,255,1) 50%, rgba(78, 205, 196, 0.1) 50%)',
+            },
+            backgroundSize: {
+              'scanlines-size': '4px 100%',
+            }
+          },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

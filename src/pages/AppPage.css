@@ -1,0 +1,20 @@
+.app-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+  overflow: hidden;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  margin-top: var(--header-height);
+}
+
+@media (max-width: 768px) {
+  .app-content {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,52 @@
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-xl);
+  background: rgba(13, 17, 23, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: var(--border-subtle);
+}
+
+.app-header-left {
+  flex-shrink: 0;
+}
+
+.app-header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.app-header-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.app-header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  border: var(--border-subtle);
+}
+
+.app-header-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
