@@ -205,7 +205,7 @@ Respond with JSON only:
     "invalidation": "What would make this obsolete"
   },
   "pythonCode": "complete Python file as a single string"
-}`, { jsonMode: true, temperature: 0.2, maxTokens: 4096 })
+}`, { parseJson: true, temperature: 0.2, maxTokens: 4096 })
 }
 
 // ——— AGENT 6: Code Verifier ———
@@ -230,7 +230,7 @@ Respond with JSON only:
   "fixesApplied": [],
   "githubReady": true,
   "iterations": 1
-}`, { jsonMode: true, temperature: 0.1, maxTokens: 4096 })
+}`, { parseJson: true, temperature: 0.1, maxTokens: 4096 })
 }
 
 // ——— AGENT 7: Market Gap ———

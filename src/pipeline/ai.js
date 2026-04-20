@@ -31,17 +31,21 @@ export async function callGroq(prompt, options = {}) {
     temperature = 0.4,
     maxTokens = 2048,
     jsonMode = false,
+    parseJson = false, // parse JSON from text without strict API validation
     apiKey = localStorage.getItem('meridian-groq-key') || import.meta.env.VITE_GROQ_API_KEY || '',
   } = options
 
   if (!apiKey) throw new Error('Groq API key not set — add it in Settings')
+
+  // Only use strict json_object mode when jsonMode is true AND parseJson is false
+  const useStrictJson = jsonMode && !parseJson
 
   const body = {
     model: 'llama-3.3-70b-versatile',
     messages: [{ role: 'user', content: prompt }],
     temperature,
     max_tokens: maxTokens,
-    ...(jsonMode && { response_format: { type: 'json_object' } }),
+    ...(useStrictJson && { response_format: { type: 'json_object' } }),
   }
 
   const res = await fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
@@ -66,18 +70,26 @@ export async function callGroq(prompt, options = {}) {
     throw new Error('Groq returned no content')
   }
 
-  if (jsonMode) {
-    try { return JSON.parse(text) }
-    catch {
-      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      try { return JSON.parse(cleaned) }
-      catch {
-        console.error('[Groq] Invalid JSON:', text.substring(0, 500))
-        throw new Error('Groq returned invalid JSON')
-      }
-    }
+  if (jsonMode || parseJson) {
+    return extractJson(text)
   }
   return text
+}
+
+// Robust JSON extraction — handles code fences, leading text, etc.
+function extractJson(text) {
+  // Try direct parse first
+  try { return JSON.parse(text) } catch {}
+  // Try removing markdown code fences
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  try { return JSON.parse(cleaned) } catch {}
+  // Try finding JSON object in the text
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    try { return JSON.parse(jsonMatch[0]) } catch {}
+  }
+  console.error('[Groq] Could not extract JSON:', text.substring(0, 500))
+  throw new Error('Could not extract JSON from response')
 }
 
 // Legacy export for any code that might still reference it
