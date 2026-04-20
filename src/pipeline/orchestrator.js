@@ -183,29 +183,44 @@ Respond with JSON only:
 }`, { jsonMode: true, temperature: 0.2, maxTokens: 2000 })
 }
 
-// ——— AGENT 5: Code Translator ———
+// ——— AGENT 5: Code Translator (2-step: spec then code) ———
 async function agent5(bridge, brief, frustration) {
-  return await callGroq(`Generate a technical spec and complete working Python file (<200 lines).
+  // Step 1: Generate the specification only
+  const spec = await callGroq(`Generate a technical specification for a Python library that implements this bridge.
 
 BRIDGE: ${JSON.stringify(bridge)}
 BRIEF: ${JSON.stringify(brief)}
 FRUSTRATION: ${JSON.stringify(frustration)}
 
-RULES: single file, stdlib + pydantic only, type hints, docstrings, 3 test_* functions, if __name__ == "__main__" block. NO placeholders or stubs.
-
 Respond with JSON only:
 {
-  "specification": {
-    "libraryName": "kebab-case-name",
-    "oneLiner": "One sentence description",
-    "coreAlgorithm": "Paragraph explaining the algorithm",
-    "apiSurface": [{ "method": "Class.method()", "params": "param descriptions", "returns": "return type" }],
-    "primaryUseCase": "Who uses this and why",
-    "limitations": "Known limitations",
-    "invalidation": "What would make this obsolete"
-  },
-  "pythonCode": "complete Python file as a single string"
-}`, { parseJson: true, temperature: 0.2, maxTokens: 4096 })
+  "libraryName": "kebab-case-name",
+  "oneLiner": "One sentence description",
+  "coreAlgorithm": "Paragraph explaining the algorithm",
+  "apiSurface": [{ "method": "Class.method()", "params": "param descriptions", "returns": "return type" }],
+  "primaryUseCase": "Who uses this and why",
+  "limitations": "Known limitations",
+  "invalidation": "What would make this obsolete"
+}`, { jsonMode: true, temperature: 0.2 })
+
+  await wait(800)
+
+  // Step 2: Generate the Python code as plain text (NOT inside JSON)
+  const pythonCode = await callGroq(`Write a complete, working Python file (<150 lines) implementing this specification.
+
+LIBRARY: ${spec.libraryName} — ${spec.oneLiner}
+ALGORITHM: ${spec.coreAlgorithm}
+API: ${JSON.stringify(spec.apiSurface)}
+
+RULES:
+- Single file, stdlib + pydantic only
+- Type hints and docstrings
+- 3 test_* functions
+- if __name__ == "__main__" block
+- NO placeholders, stubs, or pass statements
+- Output ONLY the Python code, no markdown fences, no explanation`, { temperature: 0.2, maxTokens: 4096 })
+
+  return { specification: spec, pythonCode }
 }
 
 // ——— AGENT 6: Code Verifier ———
