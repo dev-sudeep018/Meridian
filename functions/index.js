@@ -8,7 +8,6 @@ initializeApp();
 // ===== Pipeline Entry Point =====
 exports.startDiscovery = onCall(
   {
-    secrets: ["GEMINI_API_KEY", "GROQ_API_KEY", "TAVILY_API_KEY"],
     timeoutSeconds: 540,
     memory: "1GiB",
     maxInstances: 10,
@@ -20,7 +19,6 @@ exports.startDiscovery = onCall(
 exports.overseer = onDocumentUpdated(
   {
     document: "discoveries/{discoveryId}",
-    secrets: ["GEMINI_API_KEY"],
     memory: "512MiB",
     timeoutSeconds: 60,
   },

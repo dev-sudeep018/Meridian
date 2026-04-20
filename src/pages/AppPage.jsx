@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
+import { runPipeline } from '../pipeline/orchestrator'
 import { useAuth } from '../hooks/useAuth'
 import { useDiscovery } from '../hooks/useDiscovery'
 import Header from '../components/app/Header'
@@ -91,12 +92,15 @@ export default function AppPage() {
         })
         setDiscoveryId(docRef.id)
 
-        // In production, this would call a Cloud Function:
-        // const startDiscovery = httpsCallable(getFunctions(), 'startDiscovery')
-        // await startDiscovery({ discoveryId: docRef.id, answers: finalAnswers })
-
-        // For demo: simulate agent completion with mock data
-        simulateAgentPipeline(docRef.id, finalAnswers)
+        // Run the pipeline client-side
+        const hasKeys = (localStorage.getItem('meridian-gemini-key') || import.meta.env.VITE_GEMINI_API_KEY) && (localStorage.getItem('meridian-groq-key') || import.meta.env.VITE_GROQ_API_KEY)
+        if (hasKeys) {
+          runPipeline(docRef.id, finalAnswers)
+            .catch(err => console.error('Pipeline error:', err.message))
+        } else {
+          // Fallback to simulation if no API keys set
+          simulateAgentPipeline(docRef.id, finalAnswers)
+        }
       } catch (err) {
         console.error('Failed to start discovery:', err)
         setMessages(prev => [
