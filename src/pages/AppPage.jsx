@@ -8,15 +8,17 @@ import Header from '../components/app/Header'
 import ConversationPanel from '../components/app/ConversationPanel'
 import DiscoveryBoard from '../components/app/DiscoveryBoard'
 import HistoryPanel from '../components/app/HistoryPanel'
+import SettingsPanel from '../components/app/SettingsPanel'
 import './AppPage.css'
 
 export default function AppPage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [discoveryId, setDiscoveryId] = useState(null)
   const [phase, setPhase] = useState('q1') // q1, q2, q3, running, complete
   const [answers, setAnswers] = useState({ q1: '', q2: '', q3: '' })
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -104,6 +106,7 @@ export default function AppPage() {
       <Header
         discovery={discovery}
         onToggleHistory={() => setHistoryOpen(!historyOpen)}
+        onToggleSettings={() => setSettingsOpen(!settingsOpen)}
         user={user}
       />
 
@@ -129,6 +132,14 @@ export default function AppPage() {
             navigate(`/discovery/${id}`)
             setHistoryOpen(false)
           }}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsPanel
+          user={user}
+          onClose={() => setSettingsOpen(false)}
+          onSignOut={signOut}
         />
       )}
     </div>

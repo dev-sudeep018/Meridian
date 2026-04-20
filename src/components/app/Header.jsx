@@ -1,10 +1,10 @@
 import Logo from '../shared/Logo'
 import OverseerBar from './OverseerBar'
-import { History, User } from 'lucide-react'
+import { History, Settings, User } from 'lucide-react'
 import Button from '../shared/Button'
 import './Header.css'
 
-export default function Header({ discovery, onToggleHistory, user }) {
+export default function Header({ discovery, onToggleHistory, onToggleSettings, user }) {
   return (
     <header className="app-header" id="app-header">
       <div className="app-header-left">
@@ -27,8 +27,20 @@ export default function Header({ discovery, onToggleHistory, user }) {
         >
           History
         </Button>
+        <button
+          className="app-header-settings"
+          onClick={onToggleSettings}
+          title="Settings"
+          id="settings-button"
+        >
+          <Settings size={16} />
+        </button>
         {user && (
-          <div className="app-header-avatar" title={user.displayName || user.email}>
+          <div
+            className="app-header-avatar"
+            title={user.displayName || user.email}
+            onClick={onToggleSettings}
+          >
             {user.photoURL ? (
               <img src={user.photoURL} alt="" className="app-header-avatar-img" />
             ) : (

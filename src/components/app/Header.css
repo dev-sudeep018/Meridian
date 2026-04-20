@@ -58,3 +58,27 @@
   height: 100%;
   object-fit: cover;
 }
+
+.app-header-avatar {
+  cursor: pointer;
+}
+
+.app-header-settings {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.app-header-settings:hover {
+  color: #4ECDC4;
+  border-color: rgba(78, 205, 196, 0.2);
+  background: rgba(78, 205, 196, 0.05);
+}
