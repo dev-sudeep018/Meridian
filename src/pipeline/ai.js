@@ -3,27 +3,31 @@
  * Calls Gemini and Groq directly from the browser with retry logic.
  */
 
-const MAX_RETRIES = 2
-const RETRY_DELAY = 3000
-
-async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+async function fetchWithRetry(url, options, retries = 3) {
+  let lastError = null
   for (let i = 0; i <= retries; i++) {
     try {
       const res = await fetch(url, options)
       if (res.status === 429 || res.status === 503) {
-        // Rate limited — wait and retry
-        const delay = RETRY_DELAY * (i + 1)
-        console.warn(`Rate limited (${res.status}), retrying in ${delay}ms...`)
+        // Rate limited — wait longer each retry
+        const delay = 5000 * (i + 1) // 5s, 10s, 15s, 20s
+        console.warn(`[AI] Rate limited (${res.status}), waiting ${delay / 1000}s before retry ${i + 1}/${retries}...`)
+        if (i === retries) {
+          // Final attempt failed — throw descriptive error
+          throw new Error(`API rate limit exceeded after ${retries} retries. Please wait 60 seconds and try again.`)
+        }
         await new Promise(r => setTimeout(r, delay))
         continue
       }
       return res
     } catch (err) {
+      lastError = err
       if (i === retries) throw err
-      console.warn(`Fetch failed, retry ${i + 1}/${retries}:`, err.message)
-      await new Promise(r => setTimeout(r, RETRY_DELAY))
+      console.warn(`[AI] Fetch error, retry ${i + 1}/${retries}:`, err.message)
+      await new Promise(r => setTimeout(r, 3000 * (i + 1)))
     }
   }
+  throw lastError || new Error('All retries exhausted')
 }
 
 export async function callGemini(prompt, options = {}) {
@@ -45,7 +49,9 @@ export async function callGemini(prompt, options = {}) {
     },
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+  // Use gemini-2.0-flash-lite for higher rate limits (30 RPM vs 15 RPM)
+  const model = 'gemini-2.0-flash-lite'
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
   const res = await fetchWithRetry(url, {
     method: 'POST',
@@ -61,8 +67,9 @@ export async function callGemini(prompt, options = {}) {
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) {
-    console.warn('Gemini response:', JSON.stringify(data).substring(0, 300))
-    throw new Error('Gemini returned no content')
+    const blockReason = data.candidates?.[0]?.finishReason
+    console.warn('[Gemini] No content. Finish reason:', blockReason, 'Full response:', JSON.stringify(data).substring(0, 500))
+    throw new Error(`Gemini returned no content (${blockReason || 'unknown reason'})`)
   }
 
   if (jsonMode) {
@@ -72,7 +79,7 @@ export async function callGemini(prompt, options = {}) {
       const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       try { return JSON.parse(cleaned) }
       catch (e2) {
-        console.error('Failed to parse Gemini JSON:', text.substring(0, 500))
+        console.error('[Gemini] Invalid JSON:', text.substring(0, 500))
         throw new Error('Gemini returned invalid JSON')
       }
     }
@@ -116,7 +123,7 @@ export async function callGroq(prompt, options = {}) {
   const text = data.choices?.[0]?.message?.content
 
   if (!text) {
-    console.warn('Groq response:', JSON.stringify(data).substring(0, 300))
+    console.warn('[Groq] No content. Response:', JSON.stringify(data).substring(0, 300))
     throw new Error('Groq returned no content')
   }
 
@@ -126,7 +133,7 @@ export async function callGroq(prompt, options = {}) {
       const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       try { return JSON.parse(cleaned) }
       catch (e2) {
-        console.error('Failed to parse Groq JSON:', text.substring(0, 500))
+        console.error('[Groq] Invalid JSON:', text.substring(0, 500))
         throw new Error('Groq returned invalid JSON')
       }
     }
