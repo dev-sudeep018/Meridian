@@ -1,118 +1,111 @@
 /**
- * Client-side AI wrapper
- * Gemini (primary, free 30 RPM) → Groq (fallback)
+ * Multi-Provider AI Router
+ * Rotates across Gemini + Groq free tiers for ~4,500 free calls/day.
+ * 
+ * Provider priority:
+ *   Chatbot/Overseer → Gemini 2.5 Flash (best reasoning)
+ *   Pipeline agents  → Gemini 2.0 Flash → Groq DeepSeek R1 → Groq Llama 3.3
  */
 
-async function fetchWithRetry(url, options, retries = 3) {
-  let lastError = null
+// ——— Retry logic ———
+async function fetchWithRetry(url, options, retries = 2) {
   for (let i = 0; i <= retries; i++) {
     try {
       const res = await fetch(url, options)
       if (res.status === 429 || res.status === 503) {
-        const delay = 5000 * (i + 1)
-        console.warn(`[AI] ${res.status}, waiting ${delay / 1000}s (retry ${i + 1}/${retries})...`)
-        if (i === retries) throw new Error(`Rate limited after ${retries} retries (${res.status}). Wait 60s.`)
+        if (i === retries) return res // Return the 429/503 so caller can try next provider
+        const delay = 3000 * (i + 1)
+        console.warn(`[AI] ${res.status}, waiting ${delay / 1000}s...`)
         await new Promise(r => setTimeout(r, delay))
         continue
       }
       return res
     } catch (err) {
-      lastError = err
       if (i === retries) throw err
-      console.warn(`[AI] Fetch error, retry ${i + 1}/${retries}:`, err.message)
-      await new Promise(r => setTimeout(r, 3000 * (i + 1)))
+      await new Promise(r => setTimeout(r, 2000 * (i + 1)))
     }
   }
-  throw lastError || new Error('All retries exhausted')
 }
 
-// ——— Gemini (primary) ———
-async function callGeminiAPI(prompt, options = {}) {
-  const {
-    temperature = 0.4,
-    maxOutputTokens = 4096,
-    jsonMode = false,
-    parseJson = false,
-    systemPrompt = null,
-    apiKey = localStorage.getItem('meridian-gemini-key') || import.meta.env.VITE_GEMINI_API_KEY || '',
-  } = options
-
-  if (!apiKey) throw new Error('Gemini API key not set')
-
-  const contents = []
-  if (systemPrompt) {
-    contents.push({ role: 'user', parts: [{ text: systemPrompt }] })
-    contents.push({ role: 'model', parts: [{ text: 'Understood. I will follow these instructions.' }] })
-  }
-  contents.push({ role: 'user', parts: [{ text: prompt }] })
-
-  const body = {
-    contents,
-    generationConfig: {
-      temperature,
-      maxOutputTokens,
-      ...(jsonMode && !parseJson && { responseMimeType: 'application/json' }),
-    },
-  }
-
-  // Use gemini-2.0-flash-lite for 30 RPM free tier (vs 15 RPM for regular flash)
-  const model = 'gemini-2.0-flash-lite'
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-  const res = await fetchWithRetry(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Gemini ${res.status}: ${err.substring(0, 300)}`)
-  }
-
-  const data = await res.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) {
-    const reason = data.candidates?.[0]?.finishReason || 'unknown'
-    throw new Error(`Gemini returned no content (${reason})`)
-  }
-
-  if (jsonMode || parseJson) return extractJson(text)
-  return text
+// ——— Provider definitions ———
+const PROVIDERS = {
+  'gemini-25-flash': {
+    name: 'Gemini 2.5 Flash',
+    type: 'gemini',
+    model: 'gemini-2.5-flash-preview-04-17',
+    envKey: 'VITE_GEMINI_API_KEY',
+    localKey: 'meridian-gemini-key',
+    rpm: 10,
+  },
+  'gemini-20-flash': {
+    name: 'Gemini 2.0 Flash',
+    type: 'gemini',
+    model: 'gemini-2.0-flash',
+    envKey: 'VITE_GEMINI_API_KEY',
+    localKey: 'meridian-gemini-key',
+    rpm: 15,
+  },
+  'gemini-20-lite': {
+    name: 'Gemini 2.0 Flash Lite',
+    type: 'gemini',
+    model: 'gemini-2.0-flash-lite',
+    envKey: 'VITE_GEMINI_API_KEY',
+    localKey: 'meridian-gemini-key',
+    rpm: 30,
+  },
+  'groq-deepseek-r1': {
+    name: 'Groq DeepSeek R1',
+    type: 'groq',
+    model: 'deepseek-r1-distill-llama-70b',
+    envKey: 'VITE_GROQ_API_KEY',
+    localKey: 'meridian-groq-key',
+    rpm: 30,
+  },
+  'groq-llama': {
+    name: 'Groq Llama 3.3',
+    type: 'groq',
+    model: 'llama-3.3-70b-versatile',
+    envKey: 'VITE_GROQ_API_KEY',
+    localKey: 'meridian-groq-key',
+    rpm: 30,
+  },
 }
 
-// ——— Gemini multi-turn chat ———
-async function chatGemini(messages, options = {}) {
-  const {
-    temperature = 0.6,
-    maxOutputTokens = 1024,
-    jsonMode = false,
-    parseJson = false,
-    apiKey = localStorage.getItem('meridian-gemini-key') || import.meta.env.VITE_GEMINI_API_KEY || '',
-  } = options
+// Provider chains for different use cases
+const CHAINS = {
+  chat: ['gemini-25-flash', 'gemini-20-flash', 'gemini-20-lite', 'groq-llama'],
+  overseer: ['gemini-25-flash', 'gemini-20-flash', 'groq-deepseek-r1'],
+  agent: ['gemini-20-flash', 'gemini-20-lite', 'groq-deepseek-r1', 'groq-llama'],
+  code: ['gemini-20-flash', 'groq-llama', 'gemini-20-lite'],
+}
 
-  if (!apiKey) throw new Error('Gemini API key not set')
+function getApiKey(provider) {
+  return localStorage.getItem(provider.localKey) || import.meta.env[provider.envKey] || ''
+}
 
-  // Convert OpenAI-style messages to Gemini format
+// ——— Gemini API call ———
+async function callGeminiProvider(provider, messages, options) {
+  const apiKey = getApiKey(provider)
+  if (!apiKey) return null
+
+  const { temperature = 0.4, maxTokens = 4096, jsonMode = false, parseJson = false } = options
+
+  // Convert messages to Gemini format
   const contents = []
-  let systemInstruction = null
+  let systemText = null
 
   for (const msg of messages) {
-    if (msg.role === 'system') {
-      systemInstruction = msg.content
-      continue
-    }
+    if (msg.role === 'system') { systemText = msg.content; continue }
     contents.push({
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.content }],
     })
   }
 
-  // Inject system prompt as first exchange if present
-  if (systemInstruction) {
+  if (systemText) {
     contents.unshift(
-      { role: 'user', parts: [{ text: systemInstruction }] },
-      { role: 'model', parts: [{ text: 'Understood. I will follow these instructions.' }] },
+      { role: 'user', parts: [{ text: systemText }] },
+      { role: 'model', parts: [{ text: 'Understood.' }] },
     )
   }
 
@@ -120,57 +113,45 @@ async function chatGemini(messages, options = {}) {
     contents,
     generationConfig: {
       temperature,
-      maxOutputTokens,
+      maxOutputTokens: maxTokens,
       ...(jsonMode && !parseJson && { responseMimeType: 'application/json' }),
     },
   }
 
-  const model = 'gemini-2.0-flash-lite'
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${provider.model}:generateContent?key=${apiKey}`
   const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Gemini ${res.status}: ${err.substring(0, 300)}`)
-  }
+  if (!res.ok) return null // Let caller try next provider
 
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Gemini returned no content')
+  if (!text) return null
 
   if (jsonMode || parseJson) return extractJson(text)
   return text
 }
 
-// ——— Groq (fallback) ———
-async function callGroqAPI(prompt, options = {}) {
-  const {
-    temperature = 0.4,
-    maxTokens = 2048,
-    jsonMode = false,
-    parseJson = false,
-    systemPrompt = null,
-    apiKey = localStorage.getItem('meridian-groq-key') || import.meta.env.VITE_GROQ_API_KEY || '',
-  } = options
+// ——— Groq API call ———
+async function callGroqProvider(provider, messages, options) {
+  const apiKey = getApiKey(provider)
+  if (!apiKey) return null
 
-  if (!apiKey) throw new Error('Groq API key not set')
-
+  const { temperature = 0.4, maxTokens = 4096, jsonMode = false, parseJson = false } = options
   const useStrictJson = jsonMode && !parseJson
-  const messages = []
-  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
-  messages.push({ role: 'user', content: prompt })
+
+  // Clean <think> tags from DeepSeek R1 responses
+  const isR1 = provider.model.includes('deepseek-r1')
 
   const body = {
-    model: 'llama-3.3-70b-versatile',
+    model: provider.model,
     messages,
     temperature,
     max_tokens: maxTokens,
-    ...(useStrictJson && { response_format: { type: 'json_object' } }),
+    ...(useStrictJson && !isR1 && { response_format: { type: 'json_object' } }),
   }
 
   const res = await fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
@@ -179,90 +160,68 @@ async function callGroqAPI(prompt, options = {}) {
     body: JSON.stringify(body),
   })
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Groq ${res.status}: ${err.substring(0, 200)}`)
-  }
+  if (!res.ok) return null
 
   const data = await res.json()
-  const text = data.choices?.[0]?.message?.content
-  if (!text) throw new Error('Groq returned no content')
+  let text = data.choices?.[0]?.message?.content
+  if (!text) return null
+
+  // Strip DeepSeek R1 thinking tags
+  if (isR1) {
+    text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+  }
 
   if (jsonMode || parseJson) return extractJson(text)
   return text
 }
 
-// ——— Smart router: Gemini first, Groq fallback ———
-export async function callAI(prompt, options = {}) {
-  const geminiKey = localStorage.getItem('meridian-gemini-key') || import.meta.env.VITE_GEMINI_API_KEY
-  const groqKey = localStorage.getItem('meridian-groq-key') || import.meta.env.VITE_GROQ_API_KEY
+// ——— Unified provider call ———
+async function callWithProvider(providerId, messages, options) {
+  const provider = PROVIDERS[providerId]
+  if (!provider) return null
 
-  if (geminiKey) {
-    try {
-      return await callGeminiAPI(prompt, { ...options, apiKey: geminiKey })
-    } catch (err) {
-      console.warn('[AI] Gemini failed, trying Groq:', err.message)
-      if (groqKey) return await callGroqAPI(prompt, { ...options, apiKey: groqKey, maxTokens: options.maxOutputTokens || options.maxTokens || 2048 })
-      throw err
-    }
-  }
-
-  if (groqKey) return await callGroqAPI(prompt, options)
-  throw new Error('No AI API key set. Add your Gemini key in Settings.')
+  if (provider.type === 'gemini') return await callGeminiProvider(provider, messages, options)
+  if (provider.type === 'groq') return await callGroqProvider(provider, messages, options)
+  return null
 }
 
-// ——— Chat completion with message history ———
-export async function chatCompletion(messages, options = {}) {
-  const geminiKey = localStorage.getItem('meridian-gemini-key') || import.meta.env.VITE_GEMINI_API_KEY
-  const groqKey = localStorage.getItem('meridian-groq-key') || import.meta.env.VITE_GROQ_API_KEY
+// ——— Chain execution: try providers in order ———
+async function callChain(chain, messages, options) {
+  const chainIds = CHAINS[chain] || CHAINS.agent
+  const errors = []
 
-  if (geminiKey) {
+  for (const providerId of chainIds) {
     try {
-      return await chatGemini(messages, { ...options, apiKey: geminiKey })
-    } catch (err) {
-      console.warn('[AI] Gemini chat failed, trying Groq:', err.message)
-      if (groqKey) {
-        // Convert to Groq format
-        const body = {
-          model: 'llama-3.3-70b-versatile',
-          messages,
-          temperature: options.temperature || 0.6,
-          max_tokens: options.maxOutputTokens || options.maxTokens || 1024,
-        }
-        const res = await fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error(`Groq ${res.status}`)
-        const data = await res.json()
-        const text = data.choices?.[0]?.message?.content
-        if (!text) throw new Error('Groq returned no content')
-        if (options.jsonMode || options.parseJson) return extractJson(text)
-        return text
+      console.log(`[AI] Trying ${PROVIDERS[providerId].name}...`)
+      const result = await callWithProvider(providerId, messages, options)
+      if (result !== null) {
+        console.log(`[AI] ${PROVIDERS[providerId].name} succeeded`)
+        return result
       }
-      throw err
+      console.warn(`[AI] ${PROVIDERS[providerId].name} returned null, trying next...`)
+    } catch (err) {
+      console.warn(`[AI] ${PROVIDERS[providerId].name} failed: ${err.message}`)
+      errors.push(`${PROVIDERS[providerId].name}: ${err.message}`)
     }
   }
 
-  if (groqKey) {
-    const body = {
-      model: 'llama-3.3-70b-versatile',
-      messages,
-      temperature: options.temperature || 0.6,
-      max_tokens: options.maxTokens || 1024,
-    }
-    const res = await fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) throw new Error(`Groq ${res.status}`)
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content || ''
-  }
+  throw new Error(`All providers failed: ${errors.join('; ')}`)
+}
 
-  throw new Error('No AI API key set.')
+// ——— Public API ———
+
+// Single prompt call (for pipeline agents)
+export async function callAI(prompt, options = {}) {
+  const { systemPrompt = null, chain = 'agent', ...rest } = options
+  const messages = []
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
+  messages.push({ role: 'user', content: prompt })
+  return await callChain(chain, messages, rest)
+}
+
+// Multi-turn chat (for chatbot)
+export async function chatCompletion(messages, options = {}) {
+  return await callChain(options.chain || 'chat', messages, options)
 }
 
 // Robust JSON extraction

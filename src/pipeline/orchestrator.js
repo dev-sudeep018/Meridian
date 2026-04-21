@@ -1,6 +1,6 @@
 /**
- * Client-side Pipeline Orchestrator v5
- * DeepSeek (primary) + Groq (fallback). Smart Overseer with retry.
+ * Client-side Pipeline Orchestrator v6
+ * Multi-provider: Gemini 2.5 Flash + Gemini 2.0 Flash + Groq.
  */
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -218,7 +218,7 @@ RULES:
 - 3 test_* functions
 - if __name__ == "__main__" block
 - NO placeholders, stubs, or pass statements
-- Output ONLY the Python code, no markdown fences, no explanation`, { temperature: 0.2, maxTokens: 4096 })
+- Output ONLY the Python code, no markdown fences, no explanation`, { temperature: 0.2, maxTokens: 4096, chain: 'code' })
 
   return { specification: spec, pythonCode }
 }
@@ -307,7 +307,7 @@ Set "stop" to true if:
 - The data appears fabricated
 
 Respond with JSON only:
-{ "trajectory": 0, "credibility": 0, "novelty": 0, "stop": false, "reasoning": "1-2 sentences" }`, { jsonMode: true, temperature: 0.1 })
+{ "trajectory": 0, "credibility": 0, "novelty": 0, "stop": false, "reasoning": "1-2 sentences" }`, { jsonMode: true, temperature: 0.1, chain: 'overseer' })
 
     // Enforce quality gates
     const avg = (scores.trajectory + scores.credibility + scores.novelty) / 3
