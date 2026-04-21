@@ -41,46 +41,50 @@ export default function AppPage() {
     ])
   }, [])
 
-  const handleSendMessage = useCallback(async (text) => {
+  const handleSendMessage = useCallback(async (text, extractedData = null) => {
+    // Smart chat mode — AI extracted the problem info
+    if (text === '__SMART_CHAT__' && extractedData) {
+      setPhase('running')
+      setAnswers(extractedData)
+
+      try {
+        const docRef = await addDoc(collection(db, 'discoveries'), {
+          userId: user?.uid || null,
+          status: 'running',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          userAnswers: extractedData,
+        })
+        setDiscoveryId(docRef.id)
+        runPipeline(docRef.id, extractedData)
+          .catch(err => console.error('Pipeline error:', err.message))
+      } catch (err) {
+        console.error('Failed to start discovery:', err)
+        setPhase('q1')
+      }
+      return
+    }
+
     if (!text.trim()) return
 
-    // Add user message
+    // Legacy rigid mode fallback (shouldn't be reached with new chatbot)
     const newMessages = [...messages, { role: 'user', text }]
     setMessages(newMessages)
 
     if (phase === 'q1') {
       setAnswers(prev => ({ ...prev, q1: text }))
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          text: 'Good. What have you already tried, or what solutions already exist that are close but not quite right?',
-        },
-      ])
+      setMessages([...newMessages, { role: 'assistant', text: 'What have you already tried, or what solutions exist that are close but not right?' }])
       setPhase('q2')
     } else if (phase === 'q2') {
       setAnswers(prev => ({ ...prev, q2: text }))
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          text: 'One last thing — who is the person experiencing this most painfully? Developer, founder, researcher, someone else?',
-        },
-      ])
+      setMessages([...newMessages, { role: 'assistant', text: 'Who experiences this most painfully?' }])
       setPhase('q3')
     } else if (phase === 'q3') {
       const finalAnswers = { q1: answers.q1, q2: answers.q2, q3: text }
       setAnswers(finalAnswers)
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          text: 'Perfect. I have everything I need. Watch the right side — agents are firing now.',
-        },
-      ])
+      setMessages([...newMessages, { role: 'assistant', text: 'Launching discovery agents now.' }])
       setPhase('running')
 
-      // Create discovery document in Firestore
       try {
         const docRef = await addDoc(collection(db, 'discoveries'), {
           userId: user?.uid || null,
@@ -88,25 +92,19 @@ export default function AppPage() {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           userAnswers: finalAnswers,
-          // Agent fields will be added by Cloud Functions
         })
         setDiscoveryId(docRef.id)
 
-        // Run the pipeline client-side
-        const hasKeys = (localStorage.getItem('meridian-gemini-key') || import.meta.env.VITE_GEMINI_API_KEY) && (localStorage.getItem('meridian-groq-key') || import.meta.env.VITE_GROQ_API_KEY)
+        const hasKeys = (localStorage.getItem('meridian-deepseek-key') || import.meta.env.VITE_DEEPSEEK_API_KEY) ||
+          (localStorage.getItem('meridian-groq-key') || import.meta.env.VITE_GROQ_API_KEY)
         if (hasKeys) {
           runPipeline(docRef.id, finalAnswers)
             .catch(err => console.error('Pipeline error:', err.message))
         } else {
-          // Fallback to simulation if no API keys set
           simulateAgentPipeline(docRef.id, finalAnswers)
         }
       } catch (err) {
         console.error('Failed to start discovery:', err)
-        setMessages(prev => [
-          ...prev,
-          { role: 'assistant', text: 'Something went wrong starting the discovery. Please try again.' },
-        ])
         setPhase('q1')
       }
     }

@@ -1,10 +1,10 @@
 /**
- * Client-side Pipeline Orchestrator v4
- * 100% Groq-powered — zero Gemini calls. No rate limit issues.
+ * Client-side Pipeline Orchestrator v5
+ * DeepSeek (primary) + Groq (fallback). Smart Overseer with retry.
  */
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import { callGroq } from './ai'
+import { callAI } from './ai'
 import {
   searchStackOverflow, searchGithubIssues, searchHackerNews,
   searchArxiv, searchHuggingFace, searchOpenAlex, searchSemanticScholar, searchTavily,
@@ -31,7 +31,7 @@ async function update(discoveryId, data) {
 
 // ——— AGENT 0: Prompt Sharpener ———
 async function agent0(answers) {
-  return await callGroq(`Convert these user answers into a research brief. Only clarify and structure.
+  return await callAI(`Convert these user answers into a research brief. Only clarify and structure.
 
 Q1 (Problem): ${answers.q1}
 Q2 (Prior attempts): ${answers.q2}
@@ -56,7 +56,7 @@ async function agent1(brief) {
     searchHackerNews(q, { tags: 'story' }).catch(() => []),
   ])
 
-  return await callGroq(`Find the most painful developer frustration matching this brief. Use REAL data only.
+  return await callAI(`Find the most painful developer frustration matching this brief. Use REAL data only.
 
 BRIEF: ${JSON.stringify(brief)}
 STACK OVERFLOW: ${JSON.stringify(so.slice(0, 3))}
@@ -85,7 +85,7 @@ async function agent2(brief) {
     searchHuggingFace(q).catch(() => []),
   ])
 
-  return await callGroq(`Find a capability that became available recently AND is relevant to this problem.
+  return await callAI(`Find a capability that became available recently AND is relevant to this problem.
 
 BRIEF: ${JSON.stringify(brief)}
 ARXIV: ${JSON.stringify(arxiv.slice(0, 3))}
@@ -105,7 +105,7 @@ Respond with JSON only:
 
 // ——— AGENT 3: Adjacent Domain Finder ———
 async function agent3(brief, frustration) {
-  const abstraction = await callGroq(
+  const abstraction = await callAI(
     `Express this software problem as a pure structural problem with NO technology words.
 Problem: ${brief.problemStatement}
 Frustration: ${frustration.painDescription}
@@ -124,7 +124,7 @@ Respond with JSON: { "abstractedQuery": "20-30 word abstract description" }`,
     await wait(300)
   }
 
-  return await callGroq(`From these unrelated fields, find 3 candidates where a mechanism could solve the software problem through STRUCTURAL analogy (not metaphor).
+  return await callAI(`From these unrelated fields, find 3 candidates where a mechanism could solve the software problem through STRUCTURAL analogy (not metaphor).
 
 ABSTRACTED PROBLEM: ${abstraction.abstractedQuery}
 BRIEF: ${JSON.stringify(brief)}
@@ -142,7 +142,7 @@ Respond with JSON only:
 
 // ——— AGENT 4: Adversarial Critic ———
 async function agent4(candidates, brief) {
-  return await callGroq(`You are the Adversarial Critic. Test each candidate bridge.
+  return await callAI(`You are the Adversarial Critic. Test each candidate bridge.
 
 BRIEF: ${JSON.stringify(brief)}
 CANDIDATES: ${JSON.stringify(candidates, null, 2)}
@@ -167,7 +167,7 @@ async function agent45(bridge, frustration) {
     searchGithubIssues(frustration.problemTitle, { perPage: 3 }).catch(() => []),
   ])
 
-  return await callGroq(`Find 3 real developers who would benefit from this innovation. Use REAL data only.
+  return await callAI(`Find 3 real developers who would benefit from this innovation. Use REAL data only.
 
 FRUSTRATION: ${JSON.stringify(frustration)}
 BRIDGE: ${JSON.stringify(bridge)}
@@ -186,7 +186,7 @@ Respond with JSON only:
 // ——— AGENT 5: Code Translator (2-step: spec then code) ———
 async function agent5(bridge, brief, frustration) {
   // Step 1: Generate the specification only
-  const spec = await callGroq(`Generate a technical specification for a Python library that implements this bridge.
+  const spec = await callAI(`Generate a technical specification for a Python library that implements this bridge.
 
 BRIDGE: ${JSON.stringify(bridge)}
 BRIEF: ${JSON.stringify(brief)}
@@ -206,7 +206,7 @@ Respond with JSON only:
   await wait(800)
 
   // Step 2: Generate the Python code as plain text (NOT inside JSON)
-  const pythonCode = await callGroq(`Write a complete, working Python file (<150 lines) implementing this specification.
+  const pythonCode = await callAI(`Write a complete, working Python file (<150 lines) implementing this specification.
 
 LIBRARY: ${spec.libraryName} — ${spec.oneLiner}
 ALGORITHM: ${spec.coreAlgorithm}
@@ -225,7 +225,7 @@ RULES:
 
 // ——— AGENT 6: Code Verifier ———
 async function agent6(codeResult) {
-  return await callGroq(`Verify this Python code. Check SYNTAX, LOGIC, TESTS, DEPENDENCIES (only stdlib + pydantic).
+  return await callAI(`Verify this Python code. Check SYNTAX, LOGIC, TESTS, DEPENDENCIES (only stdlib + pydantic).
 
 CODE (first 2000 chars):
 ${codeResult.pythonCode?.substring(0, 2000)}
@@ -253,7 +253,7 @@ async function agent7(specification, bridge) {
   const q = `${specification.libraryName} ${specification.primaryUseCase}`.substring(0, 100)
   const competitors = await searchTavily(q, { maxResults: 3 }).catch(() => ({ results: [] }))
 
-  return await callGroq(`Find 3 real competitors and the precise market gap.
+  return await callAI(`Find 3 real competitors and the precise market gap.
 
 SPEC: ${JSON.stringify(specification)}
 BRIDGE: ${JSON.stringify(bridge)}
@@ -271,7 +271,7 @@ Respond with JSON only:
 async function agent8(discoveryData) {
   const { specification, approvedBridge, frustrationData, marketGap } = discoveryData
 
-  return await callGroq(`Write launch content for this innovation. Technical and honest, no hype words.
+  return await callAI(`Write launch content for this innovation. Technical and honest, no hype words.
 
 INNOVATION: ${specification.libraryName} — ${specification.oneLiner}
 BRIDGE: From ${approvedBridge.field}: ${approvedBridge.mechanism}
@@ -290,7 +290,7 @@ Respond with JSON only:
 // Returns scores object and throws if pipeline should stop
 async function overseer(discoveryId, agentName, agentOutput) {
   try {
-    const scores = await callGroq(`You are the Overseer for MERIDIAN, a strict quality intelligence system.
+    const scores = await callAI(`You are the Overseer for MERIDIAN, a strict quality intelligence system.
 
 AGENT: ${agentName}
 OUTPUT: ${JSON.stringify(agentOutput).substring(0, 1500)}
